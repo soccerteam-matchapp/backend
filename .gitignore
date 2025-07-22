@@ -1,0 +1,43 @@
+# 1) 환경 변수 파일
+.env
+.env.*.local
+
+# 2) 의존성 디렉터리
+node_modules/
+
+# 3) 빌드 결과물
+dist/
+build/
+
+# 4) 로그 파일
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+*.log
+
+# 5) 테스트 커버리지
+coverage/
+
+# 6) 런타임/프로세스 파일
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# 7) 업로드된 파일(예: 사용자 업로드)
+uploads/
+
+# 8) 운영체제별 불필요 파일
+.DS_Store
+Thumbs.db
+
+# 9) IDE/에디터 설정
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# 10) 기타
+*.orig      # 머지 충돌 때 생기는 백업 파일
