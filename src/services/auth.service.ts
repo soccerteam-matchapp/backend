@@ -1,5 +1,6 @@
-import { User, IUser } from '../models/user.model';
+import { User } from '../models/user.model';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const TOKEN_EXPIRES_IN = '1h';
@@ -14,23 +15,34 @@ export interface LoginResult {
     };
 }
 
+// 비밀번호 해싱 함수
+export async function hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt(10);
+    return bcrypt.hash(password, salt);
+}
+
+// 비밀번호 검증 함수
+export async function verifyPassword(
+    candidatePassword: string,
+    hashedPassword: string
+): Promise<boolean> {
+    return bcrypt.compare(candidatePassword, hashedPassword);
+}
+
+
 export async function loginService(
     id: string,
     password: string
 ): Promise<LoginResult> {
-    // 사용자를 id 필드로 조회
     const user = await User.findOne({ id }).exec();
     if (!user) throw new Error('Invalid credentials');
 
-    // 비밀번호 검증
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await verifyPassword(password, user.password);
     if (!isMatch) throw new Error('Invalid credentials');
 
-    // JWT 생성
     const payload = { id: user.id };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRES_IN });
 
-    // 반환 사용자 정보에 belonging, myTeams 포함
     return {
         token,
         user: {
