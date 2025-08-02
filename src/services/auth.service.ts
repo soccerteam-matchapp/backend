@@ -1,34 +1,33 @@
-import { User } from '../models/user.model';
+import { User, IUser } from '../models/user.model';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const TOKEN_EXPIRES_IN = '1h';
+const ACCESS_TOKEN_EXPIRES_IN = '1h';
+const REFRESH_TOKEN_EXPIRES_IN = '7d';
 
 export interface LoginResult {
-    token: string;
+    accessToken: string;
+    refreshToken: string;
     user: {
         id: string;
         name: string;
-        belonging: string[];
-        myTeams: string[];
+        hasTeams?: string[];
+        myTeams?: string[];
     };
 }
 
-// 비밀번호 해싱 함수
-export async function hashPassword(password: string): Promise<string> {
-    const salt = await bcrypt.genSalt(10);
-    return bcrypt.hash(password, salt);
+/** 액세스 토큰 생성 */
+function generateAccessToken(userId: string): string {
+    return jwt.sign({ id: userId }, JWT_SECRET, {
+        expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+    });
 }
-
-// 비밀번호 검증 함수
-export async function verifyPassword(
-    candidatePassword: string,
-    hashedPassword: string
-): Promise<boolean> {
-    return bcrypt.compare(candidatePassword, hashedPassword);
+/** 리프레시 토큰 생성 */
+function generateRefreshToken(userId: string): string {
+    return jwt.sign({ id: userId }, JWT_SECRET, {
+        expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+    });
 }
-
 
 export async function loginService(
     id: string,
@@ -37,19 +36,51 @@ export async function loginService(
     const user = await User.findOne({ id }).exec();
     if (!user) throw new Error('Invalid credentials');
 
-    const isMatch = await verifyPassword(password, user.password);
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) throw new Error('Invalid credentials');
 
-    const payload = { id: user.id };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRES_IN });
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+
+    // 리프레시 토큰 DB 저장
+    user.refreshToken = refreshToken;
+    await user.save();
 
     return {
-        token,
+        accessToken,
+        refreshToken,
         user: {
             id: user.id,
             name: user.name,
-            belonging: user.belonging.map(teamId => teamId.toString()),
-            myTeams: user.myTeams.map(teamId => teamId.toString()),
+            hasTeams: user.hasTeams?.map(t => t.toString()),
+            myTeams: user.myTeams?.map(t => t.toString()),
         },
     };
+}
+
+/**
+ * 전달받은 리프레시 토큰으로 새 토큰 발급
+ */
+export async function refreshTokenService(
+    token: string
+): Promise<{ accessToken: string; refreshToken: string }> {
+    let payload: { id: string };
+    try {
+        payload = jwt.verify(token, JWT_SECRET) as { id: string };
+    } catch {
+        throw new Error('Invalid refresh token');
+    }
+
+    const user = await User.findById(payload.id).exec();
+    if (!user || user.refreshToken !== token) {
+        throw new Error('Refresh token not recognized');
+    }
+
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    return { accessToken, refreshToken };
 }
