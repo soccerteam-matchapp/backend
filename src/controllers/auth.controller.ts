@@ -5,47 +5,70 @@ import {
     LoginResult,
 } from '../services/auth.service';
 
-// 기존 login 컨트롤러
 export const login = async (
     req: Request,
     res: Response
 ): Promise<Response> => {
     const { id, password } = req.body;
     if (!id || !password) {
-        return res.status(400).json({ message: 'ID and password are required.' });
+        return res.status(400).json({
+            status: 400,
+            message: 'ID and password are required.',
+            data: null,
+        });
     }
     try {
         const result: LoginResult = await loginService(id, password);
-        return res.status(200).json(result);
+        return res.status(200).json({
+            status: 200,
+            message: '로그인 성공',
+            data: result,
+        });
     } catch (err: any) {
-        const msg = err.message === 'Invalid credentials'
+        const isAuthError = err.message === 'Invalid credentials';
+        const status = isAuthError ? 401 : 500;
+        const message = isAuthError
             ? 'Invalid credentials.'
             : 'Server error.';
-        const status = err.message === 'Invalid credentials' ? 401 : 500;
-        return res.status(status).json({ message: msg });
+        return res.status(status).json({
+            status,
+            message,
+            data: null,
+        });
     }
 };
 
-// 새로 추가: /api/auth/refresh
 export const refresh = async (
     req: Request,
     res: Response
 ): Promise<Response> => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
-        return res.status(400).json({ message: 'Refresh token is required.' });
+        return res.status(400).json({
+            status: 400,
+            message: 'Refresh token is required.',
+            data: null,
+        });
     }
     try {
         const tokens = await refreshTokenService(refreshToken);
-        return res.status(200).json(tokens);
+        return res.status(200).json({
+            status: 200,
+            message: '토큰 재발급 성공',
+            data: tokens,
+        });
     } catch (err: any) {
-        const msg =
-            err.message === 'Invalid refresh token' ||
-                err.message === 'Refresh token not recognized'
-                ? 'Unauthorized'
-                : 'Server error.';
-        const status =
-            msg === 'Unauthorized' ? 401 : 500;
-        return res.status(status).json({ message: msg });
+        const unauthorizedMessages = [
+            'Invalid refresh token',
+            'Refresh token not recognized',
+        ];
+        const isAuthError = unauthorizedMessages.includes(err.message);
+        const status = isAuthError ? 401 : 500;
+        const message = isAuthError ? 'Unauthorized' : 'Server error.';
+        return res.status(status).json({
+            status,
+            message,
+            data: null,
+        });
     }
 };
