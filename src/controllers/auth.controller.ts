@@ -5,6 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 const TOKEN_EXPIRES_IN = '1h';
 
 export const login = async (req: Request, res: Response): Promise<Response> => {
+
     try {
         const { username, password } = req.body;
         if (!username || !password) {
