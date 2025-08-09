@@ -1,4 +1,6 @@
+// src/services/auth.service.ts
 import { User, IUser } from '../models/user.model';
+import { Types } from 'mongoose';             // ObjectId 타입 사용
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -11,17 +13,28 @@ export interface LoginResult {
     user: {
         id: string;
         name: string;
-        hasTeams?: string[];
-        myTeams?: string[];
+        hasTeams?: Types.ObjectId[];  // 그대로 ObjectId[]
+        myTeams?: Types.ObjectId[];   // 그대로 ObjectId[]
     };
 }
 
-/** 액세스 토큰 생성 */
-function generateAccessToken(userId: string): string {
-    return jwt.sign({ id: userId }, JWT_SECRET, {
-        expiresIn: ACCESS_TOKEN_EXPIRES_IN,
-    });
+/** 액세스 토큰 생성: 페이로드엔 문자열 배열로 넣어줌 */
+function generateAccessToken(
+    userId: string,
+    hasTeams: Types.ObjectId[] = [],
+    myTeams: Types.ObjectId[] = []
+): string {
+    return jwt.sign(
+        {
+            id: userId,
+            hasTeams: hasTeams.map(t => t.toString()),
+            myTeams: myTeams.map(t => t.toString()),
+        },
+        JWT_SECRET,
+        { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
+    );
 }
+
 /** 리프레시 토큰 생성 */
 function generateRefreshToken(userId: string): string {
     return jwt.sign({ id: userId }, JWT_SECRET, {
@@ -39,10 +52,12 @@ export async function loginService(
     const isMatch = await user.comparePassword(password);
     if (!isMatch) throw new Error('Invalid credentials');
 
-    const accessToken = generateAccessToken(user.id);
+    const hasTeams = user.hasTeams ?? [];
+    const myTeams = user.myTeams ?? [];
+
+    const accessToken = generateAccessToken(user.id, hasTeams, myTeams);
     const refreshToken = generateRefreshToken(user.id);
 
-    // 리프레시 토큰 DB 저장
     user.refreshToken = refreshToken;
     await user.save();
 
@@ -52,15 +67,12 @@ export async function loginService(
         user: {
             id: user.id,
             name: user.name,
-            hasTeams: user.hasTeams?.map(t => t.toString()),
-            myTeams: user.myTeams?.map(t => t.toString()),
+            hasTeams,              // ObjectId[] 그대로 반환
+            myTeams,               // ObjectId[] 그대로 반환
         },
     };
 }
 
-/**
- * 전달받은 리프레시 토큰으로 새 토큰 발급
- */
 export async function refreshTokenService(
     token: string
 ): Promise<{ accessToken: string; refreshToken: string }> {
@@ -76,7 +88,10 @@ export async function refreshTokenService(
         throw new Error('Refresh token not recognized');
     }
 
-    const accessToken = generateAccessToken(user.id);
+    const hasTeams = user.hasTeams ?? [];
+    const myTeams = user.myTeams ?? [];
+
+    const accessToken = generateAccessToken(user.id, hasTeams, myTeams);
     const refreshToken = generateRefreshToken(user.id);
 
     user.refreshToken = refreshToken;
