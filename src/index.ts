@@ -3,8 +3,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.routes';
 import path from 'path';
-import swaggerUi from 'swagger-ui-express';
-import YAML from 'yamljs';
+import swaggerUi from 'swagger-ui-express'
+import YAML from 'yamljs'
 
 // .env가 프로젝트 루트에 있을 때
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -12,15 +12,21 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 // 환경 변수 로드
 dotenv.config();
 
+// 번들 결과 파일 경로 (dev: src/swagger.yaml)
+const swaggerPath = path.resolve(process.cwd(), 'src/swagger.yaml');
+// 필요하다면 환경변수로 전환 가능: SWAGGER_PATH=dist/swagger.yaml
+const swaggerSpec = YAML.load(swaggerPath);
+
 const app = express();
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const PORT = process.env.PORT ?? 3000;
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) throw new Error('MONGO_URI가 설정되지 않았습니다.');
-const swaggerSpec: any = YAML.load(path.join(__dirname, './swagger.yaml'));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+
 
 mongoose
     .connect(MONGO_URI)
