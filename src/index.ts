@@ -3,6 +3,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.routes';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
 
 // .env가 프로젝트 루트에 있을 때
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -17,6 +19,8 @@ app.use('/api/auth', authRoutes);
 const PORT = process.env.PORT ?? 3000;
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) throw new Error('MONGO_URI가 설정되지 않았습니다.');
+const swaggerSpec: any = YAML.load(path.join(__dirname, './swagger.yaml'));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 mongoose
     .connect(MONGO_URI)

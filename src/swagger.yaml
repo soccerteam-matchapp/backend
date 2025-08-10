@@ -1,0 +1,11 @@
+openapi: '0.0.0'
+info:
+  version: 0.0.1
+  title: sportly
+  description: sportly의 API 문서입니다
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:3000/
+paths:
+components:
