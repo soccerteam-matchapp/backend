@@ -1,33 +1,74 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/user.model'
-const JWT_SECRET = process.env.JWT_SECRET!;
-const TOKEN_EXPIRES_IN = '1h';
+import {
+    loginService,
+    refreshTokenService,
+    LoginResult,
+} from '../services/auth.service';
 
-export const login = async (req: Request, res: Response): Promise<Response> => {
-
+export const login = async (
+    req: Request,
+    res: Response
+): Promise<Response> => {
+    const { id, password } = req.body;
+    if (!id || !password) {
+        return res.status(400).json({
+            status: 400,
+            message: 'ID and password are required.',
+            data: null,
+        });
+    }
     try {
-        const { username, password } = req.body;
-        if (!username || !password) {
-            return res.status(400).json({ message: 'Username and password are required.' });
-        }
+        const result: LoginResult = await loginService(id, password);
+        return res.status(200).json({
+            status: 200,
+            message: '로그인 성공',
+            data: result,
+        });
+    } catch (err: any) {
+        const isAuthError = err.message === 'Invalid credentials';
+        const status = isAuthError ? 401 : 500;
+        const message = isAuthError
+            ? 'Invalid credentials.'
+            : 'Server error.';
+        return res.status(status).json({
+            status,
+            message,
+            data: null,
+        });
+    }
+};
 
-        const user = await User.findOne({ username }).exec();
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
-        }
-
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
-        }
-
-        const payload = { id: user.id, username: user.username };
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRES_IN });
-
-        return res.status(200).json({ token, user: { id: user.id, username: user.username, name: user.name } });
-    } catch (error) {
-        console.error('Login error:', error);
-        return res.status(500).json({ message: 'Server error.' });
+export const refresh = async (
+    req: Request,
+    res: Response
+): Promise<Response> => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+        return res.status(400).json({
+            status: 400,
+            message: 'Refresh token is required.',
+            data: null,
+        });
+    }
+    try {
+        const tokens = await refreshTokenService(refreshToken);
+        return res.status(200).json({
+            status: 200,
+            message: '토큰 재발급 성공',
+            data: tokens,
+        });
+    } catch (err: any) {
+        const unauthorizedMessages = [
+            'Invalid refresh token',
+            'Refresh token not recognized',
+        ];
+        const isAuthError = unauthorizedMessages.includes(err.message);
+        const status = isAuthError ? 401 : 500;
+        const message = isAuthError ? 'Unauthorized' : 'Server error.';
+        return res.status(status).json({
+            status,
+            message,
+            data: null,
+        });
     }
 };

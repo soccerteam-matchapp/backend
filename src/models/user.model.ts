@@ -1,32 +1,48 @@
-import mongoose, { Document, Model } from 'mongoose';
+import mongoose, { Document, Model, Schema, Types } from 'mongoose';
 import bcrypt from 'bcrypt';
 
 export interface IUser extends Document {
     id: string;
-    username: string;
-    password: string;
     name: string;
-    comparePassword(candidatePassword: string): Promise<boolean>;
+    password: string;
+    hasTeams?: Types.ObjectId[];
+    myTeams?: Types.ObjectId[];
+    refreshToken?: string;
+    comparePassword(candidate: string): Promise<boolean>;
 }
 
-const userSchema = new mongoose.Schema<IUser>(
+const userSchema = new Schema<IUser>(
     {
-        username: { type: String, required: true, unique: true },
-        password: { type: String, required: true },
+        id: { type: String, required: true, unique: true },
         name: { type: String, required: true },
+        password: { type: String, required: true },
+        hasTeams: [{ type: Types.ObjectId, ref: 'Team' }],   // 옵셔널 배열
+        myTeams: [{ type: Types.ObjectId, ref: 'Team' }],   // 옵셔널 배열
+        refreshToken: { type: String },                      // 옵셔널
     },
     { timestamps: true }
 );
 
-userSchema.pre<IUser>('save', async function (next) {
-    if (!this.isModified('password')) return next();
+// 내부 해시/검증 함수
+async function hashPassword(password: string) {
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    return bcrypt.hash(password, salt);
+}
+async function verifyPassword(candidate: string, hashed: string) {
+    return bcrypt.compare(candidate, hashed);
+}
+
+// 저장 직전 해싱
+userSchema.pre<IUser>('save', async function (next) {
+    if (this.isModified('password')) {
+        this.password = await hashPassword(this.password);
+    }
     next();
 });
 
-userSchema.methods.comparePassword = function (candidatePassword: string): Promise<boolean> {
-    return bcrypt.compare(candidatePassword, this.password);
+// 인스턴스 메서드로 비교
+userSchema.methods.comparePassword = function (candidate: string) {
+    return verifyPassword(candidate, this.password);
 };
 
-export const User: Model<IUser> = mongoose.model<IUser>('User', userSchema);
+export const User: Model<IUser> = mongoose.model('User', userSchema);

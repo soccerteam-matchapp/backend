@@ -4,7 +4,6 @@ import { validateRegister } from '../middlewares/register.middleware';
 
 const router = express.Router();
 
-console.log('Register route hit');
 
 // POST /api/auth/register  — 회원가입 라우트
 router.post('/register', validateRegister, register);
