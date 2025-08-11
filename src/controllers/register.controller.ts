@@ -1,18 +1,12 @@
 // controllers/register.controller.ts
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { registerUser } from '../services/register.service';
 
-export const register = async (req: Request, res: Response): Promise<void> => {
-    const { username, name, password } = req.body;
-
+export const register = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        await registerUser(username, name, password);
+        await registerUser(req.body.id, req.body.name, req.body.password);
         res.status(201).json({ message: '회원가입 성공' });
-    } catch (error: any) {
-        if (error.message === '이미 존재하는 사용자입니다.') {
-            res.status(400).json({ message: error.message });
-        } else {
-            res.status(500).json({ message: '서버 오류' });
-        }
+    } catch (error) {
+        next(error); // 여기서 미들웨어로 넘김
     }
 };

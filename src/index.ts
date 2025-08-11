@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.routes';
 import registerRoutes from './routes/register.routes';
+import { errorHandler } from './middlewares/error.handler';
 import path from 'path';
 
 // .env가 프로젝트 루트에 있을 때
@@ -15,6 +16,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', registerRoutes);
+app.use(errorHandler);
 
 const PORT = process.env.PORT ?? 3000;
 const MONGO_URI = process.env.MONGO_URI;
