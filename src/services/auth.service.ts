@@ -1,11 +1,23 @@
-// src/services/auth.service.ts
 import { User, IUser } from '../models/user.model';
-import { Types } from 'mongoose';             // ObjectId 타입 사용
+import { Types } from 'mongoose';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const ACCESS_TOKEN_EXPIRES_IN = '1h';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
+
+type Role = 'leader' | 'member';
+
+/** 액세스 토큰: 함수 내부에서 role 계산 후 { id, role }만 담아 서명 */
+function generateAccessToken(user: IUser): string {
+    const role: Role = (user.myTeams?.length ?? 0) > 0 ? 'leader' : 'member';
+    return jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+}
+
+/** 리프레시 토큰: 최소 정보(id)만 */
+function generateRefreshToken(userId: string): string {
+    return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+}
 
 export interface LoginResult {
     accessToken: string;
@@ -13,53 +25,26 @@ export interface LoginResult {
     user: {
         id: string;
         name: string;
-        hasTeams?: Types.ObjectId[];  // 그대로 ObjectId[]
-        myTeams?: Types.ObjectId[];   // 그대로 ObjectId[]
+        hasTeams?: Types.ObjectId[];
+        myTeams?: Types.ObjectId[];
+        role: Role; // 응답 데이터에도 role 포함(프론트 편의)
     };
 }
 
-/** 액세스 토큰 생성: 페이로드엔 문자열 배열로 넣어줌 */
-function generateAccessToken(
-    userId: string,
-    hasTeams: Types.ObjectId[] = [],
-    myTeams: Types.ObjectId[] = []
-): string {
-    return jwt.sign(
-        {
-            id: userId,
-            hasTeams: hasTeams.map(t => t.toString()),
-            myTeams: myTeams.map(t => t.toString()),
-        },
-        JWT_SECRET,
-        { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
-    );
-}
-
-/** 리프레시 토큰 생성 */
-function generateRefreshToken(userId: string): string {
-    return jwt.sign({ id: userId }, JWT_SECRET, {
-        expiresIn: REFRESH_TOKEN_EXPIRES_IN,
-    });
-}
-
-export async function loginService(
-    id: string,
-    password: string
-): Promise<LoginResult> {
+export async function loginService(id: string, password: string): Promise<LoginResult> {
     const user = await User.findOne({ id }).exec();
     if (!user) throw new Error('Invalid credentials');
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) throw new Error('Invalid credentials');
+    const ok = await user.comparePassword(password);
+    if (!ok) throw new Error('Invalid credentials');
 
-    const hasTeams = user.hasTeams ?? [];
-    const myTeams = user.myTeams ?? [];
-
-    const accessToken = generateAccessToken(user.id, hasTeams, myTeams);
+    const accessToken = generateAccessToken(user);       // ← 함수 내부에서 role 계산 & 포함
     const refreshToken = generateRefreshToken(user.id);
 
     user.refreshToken = refreshToken;
     await user.save();
+
+    const role: Role = (user.myTeams?.length ?? 0) > 0 ? 'leader' : 'member';
 
     return {
         accessToken,
@@ -67,8 +52,9 @@ export async function loginService(
         user: {
             id: user.id,
             name: user.name,
-            hasTeams,              // ObjectId[] 그대로 반환
-            myTeams,               // ObjectId[] 그대로 반환
+            hasTeams: user.hasTeams ?? [],
+            myTeams: user.myTeams ?? [],
+            role,                                            // 응답 데이터에도 제공
         },
     };
 }
@@ -88,10 +74,8 @@ export async function refreshTokenService(
         throw new Error('Refresh token not recognized');
     }
 
-    const hasTeams = user.hasTeams ?? [];
-    const myTeams = user.myTeams ?? [];
-
-    const accessToken = generateAccessToken(user.id, hasTeams, myTeams);
+    // 멤버십 변경이 있었을 수 있으므로 여기서도 최신 role로 다시 서명
+    const accessToken = generateAccessToken(user);       // ← role 포함
     const refreshToken = generateRefreshToken(user.id);
 
     user.refreshToken = refreshToken;
