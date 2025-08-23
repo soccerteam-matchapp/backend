@@ -40,4 +40,9 @@ Thumbs.db
 *.sln
 
 # 10) 기타
-*.orig      # 머지 충돌 때 생기는 백업 파일
+*.orig      # 머지 충돌 때 생기는 백업 파일node_modules/
+dist/
+.env
+node_modules/
+dist/
+.env
