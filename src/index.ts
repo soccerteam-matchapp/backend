@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.routes';
-import registerRoutes from './routes/register.routes';
 import { errorHandler } from './middlewares/error.handler';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express'
@@ -23,6 +22,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(errorHandler);
 
 const PORT = process.env.PORT ?? 3000;
 const MONGO_URI = process.env.MONGO_URI;
