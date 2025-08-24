@@ -19,14 +19,12 @@ export interface LoginResult {
     };
 }
 
-/** JWT 시크릿을 “사용 시점”에 안전하게 가져오기 */
 function getJwtSecret(): string {
     const s = process.env.JWT_SECRET;
     if (!s) throw new Error('JWT_SECRET is not set');
     return s;
 }
 
-/** 사용자 역할 산정(예: myTeams 보유 시 leader) */
 function resolveRole(user: IUser): Role {
     return (user.myTeams?.length ?? 0) > 0 ? 'leader' : 'member';
 }
@@ -75,7 +73,7 @@ export const loginService = async (id: string, password: string): Promise<LoginR
         accessToken,
         refreshToken,
         user: {
-            id: String(user._id),     // 응답은 _id 문자열로 통일
+            id: String(user._id),
             name: user.name,
             role: resolveRole(user),
         },
@@ -86,8 +84,12 @@ export const loginService = async (id: string, password: string): Promise<LoginR
 export const refreshTokenService = async (token: string): Promise<{ accessToken: string; refreshToken: string }> => {
     let payload: any;
     try {
-        payload = jwt.verify(token, getJwtSecret()) as { sub: string };
+        payload = jwt.verify(token, getJwtSecret()) as { sub?: string };
     } catch {
+        throw new AuthError('Invalid refresh token.');
+    }
+
+    if (!payload?.sub) {
         throw new AuthError('Invalid refresh token.');
     }
 

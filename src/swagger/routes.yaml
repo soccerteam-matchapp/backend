@@ -1,314 +1,114 @@
-paths:
-  /auth/register:
-    post:
-      tags: [Auth]
-      summary: 회원가입
-      description: |
-        회원을 생성합니다. `username`을 보내도 내부에서 `name`으로 매핑되어 처리됩니다.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegisterRequest"
-            examples:
-              default:
-                value: { id: "soccer123", name: "정혜원", password: "secret12" }
-              allowUsernameAlias:
-                value: { id: "soccer123", username: "정혜원", password: "secret12" }
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data:
-                        nullable: true
-                        example: null
-              examples:
-                created:
-                  value: { status: 201, message: "회원가입 성공", data: null }
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /auth/login:
-    post:
-      tags: [Auth]
-      summary: 로그인
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-            examples:
-              default:
-                value: { id: "soccer123", password: "secret12" }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/LoginData"
-              examples:
-                ok:
-                  value:
-                    status: 200
-                    message: "로그인 성공"
-                    data:
-                      accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      user:
-                        id: "66c7e2d2f3a4f2bb1e8e1b11"   # MongoDB _id 문자열
-                        name: "정혜원"
-                        role: "member"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /auth/refresh:
-    post:
-      tags: [Auth]
-      summary: 토큰 재발급
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshRequest"
-            examples:
-              default:
-                value: { refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/TokensData"
-              examples:
-                ok:
-                  value:
-                    status: 200
-                    message: "토큰 재발급 성공"
-                    data:
-                      accessToken: "new-access-token"
-                      refreshToken: "new-refresh-token"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: 액세스 토큰을 Bearer 스킴으로 전송합니다. 예) `Authorization: Bearer <token>`
-
-  schemas:
-    # 공통 응답 틀
-    BaseResponse:
-      type: object
-      properties:
-        status:
-          type: integer
-          format: int32
-          example: 200
-        message:
-          type: string
-          example: OK
-        data:
-          nullable: true
-        error:
-          type: string
-          nullable: true
-          description: 에러 코드(있는 경우)
-      required: [status, message]
-
-    Role:
-      type: string
-      enum: [leader, member]
-
-    # 요청 스키마
-    RegisterRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          description: 로그인 아이디(중복 불가)
-          minLength: 3
-        name:
-          type: string
-          description: 사용자 이름 (별칭 `username`도 허용되며 내부에서 name으로 매핑됨)
-        password:
-          type: string
-          minLength: 6
-      required: [id, name, password]
-
-    LoginRequest:
-      type: object
-      properties:
-        id:
-          type: string
-        password:
-          type: string
-      required: [id, password]
-
-    RefreshRequest:
-      type: object
-      properties:
-        refreshToken:
-          type: string
-      required: [refreshToken]
-
-    # 데이터 페이로드
-    UserSummary:
-      type: object
-      properties:
-        id:
-          type: string
-          description: MongoDB _id 문자열
-        name:
-          type: string
-        role:
-          $ref: "#/components/schemas/Role"
-      required: [id, name, role]
-
-    TokensData:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-      required: [accessToken, refreshToken]
-
-    LoginData:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-        user:
-          $ref: "#/components/schemas/UserSummary"
-      required: [accessToken, refreshToken, user]
-
-  responses:
-    BadRequest:
-      description: 잘못된 요청(ValidationError 등)
+/auth/register:
+  post:
+    tags: [Auth]
+    summary: 회원가입
+    description: >
+      회원을 생성합니다. `username`을 보내도 내부에서 `name`으로 매핑되어 처리됩니다.
+    requestBody:
+      required: true
       content:
         application/json:
           schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 400
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: validation_error
-          examples:
-            missingFields:
-              value: { status: 400, message: "id, name, password가 모두 필요합니다.", data: null, error: "validation_error" }
-
-    Unauthorized:
-      description: 인증 실패(토큰 만료/무효, 잘못된 자격증명 등)
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 401
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: invalid_credentials
-          examples:
-            invalidCredentials:
-              value: { status: 401, message: "Invalid credentials.", data: null, error: "invalid_credentials" }
-            tokenExpired:
-              value: { status: 401, message: "token expired", data: null, error: "token_expired" }
-            tokenInvalid:
-              value: { status: 401, message: "invalid token", data: null, error: "token_invalid" }
-
-    Conflict:
-      description: 자원 충돌(중복 아이디 등)
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 409
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: duplicate_key
-          examples:
-            duplicateId:
-              value: { status: 409, message: "이미 존재하는 아이디입니다.", data: null, error: "duplicate_key" }
-
-    ServerError:
-      description: 서버 오류
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 500
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: server_error
+            $ref: "./openapi.yaml#/components/schemas/RegisterRequest"
           examples:
             default:
-              value: { status: 500, message: "서버 오류가 발생했습니다.", data: null, error: "server_error" }
+              value: { id: "soccer123", name: "정혜원", password: "secret12" }
+            allowUsernameAlias:
+              value: { id: "soccer123", username: "정혜원", password: "secret12" }
+    responses:
+      "201":
+        description: Created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      nullable: true
+                      example: null
+            examples:
+              created:
+                value: { status: 201, message: "회원가입 성공", data: null }
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "409": { $ref: "./openapi.yaml#/components/responses/Conflict" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/auth/login:
+  post:
+    tags: [Auth]
+    summary: 로그인
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "./openapi.yaml#/components/schemas/LoginRequest"
+          examples:
+            default:
+              value: { id: "soccer123", password: "secret12" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "./openapi.yaml#/components/schemas/LoginData"
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "로그인 성공"
+                  data:
+                    accessToken: "eyJhbGciOi..."
+                    refreshToken: "eyJhbGciOi..."
+                    user:
+                      id: "66c7e2d2f3a4f2bb1e8e1b11"
+                      name: "정혜원"
+                      role: "member"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/auth/refresh:
+  post:
+    tags: [Auth]
+    summary: 토큰 재발급
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "./openapi.yaml#/components/schemas/RefreshRequest"
+          examples:
+            default:
+              value: { refreshToken: "eyJhbGciOi..." }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "./openapi.yaml#/components/schemas/TokensData"
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "토큰 재발급 성공"
+                  data:
+                    accessToken: "new-access-token"
+                    refreshToken: "new-refresh-token"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
