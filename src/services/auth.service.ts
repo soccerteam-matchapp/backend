@@ -1,85 +1,106 @@
-import { User, IUser } from '../models/user.model';
-import { Types } from 'mongoose';
+// src/services/auth.service.ts
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import { User, IUser } from '../models/user.model';
+import { ValidationError, AuthError } from '../utils/errors';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 const ACCESS_TOKEN_EXPIRES_IN = '1h';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
 
-type Role = 'leader' | 'member';
-
-/** 액세스 토큰: 함수 내부에서 role 계산 후 { id, role }만 담아 서명 */
-function generateAccessToken(user: IUser): string {
-    const role: Role = (user.myTeams?.length ?? 0) > 0 ? 'leader' : 'member';
-    return jwt.sign({ id: user.id, role }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
-}
-
-/** 리프레시 토큰: 최소 정보(id)만 */
-function generateRefreshToken(userId: string): string {
-    return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
-}
+export type Role = 'leader' | 'member';
 
 export interface LoginResult {
     accessToken: string;
     refreshToken: string;
     user: {
-        id: string;
+        id: string;      // MongoDB _id 문자열
         name: string;
-        hasTeams?: Types.ObjectId[];
-        myTeams?: Types.ObjectId[];
-        role: Role; // 응답 데이터에도 role 포함(프론트 편의)
+        role: Role;
     };
 }
 
-export async function loginService(id: string, password: string): Promise<LoginResult> {
+/** JWT 시크릿을 “사용 시점”에 안전하게 가져오기 */
+function getJwtSecret(): string {
+    const s = process.env.JWT_SECRET;
+    if (!s) throw new Error('JWT_SECRET is not set');
+    return s;
+}
+
+/** 사용자 역할 산정(예: myTeams 보유 시 leader) */
+function resolveRole(user: IUser): Role {
+    return (user.myTeams?.length ?? 0) > 0 ? 'leader' : 'member';
+}
+
+/** 액세스 토큰: sub(_id) + role */
+function generateAccessToken(user: IUser): string {
+    return jwt.sign(
+        { sub: String(user._id), role: resolveRole(user) },
+        getJwtSecret(),
+        { expiresIn: ACCESS_TOKEN_EXPIRES_IN }
+    );
+}
+
+/** 리프레시 토큰: sub(_id)만 */
+function generateRefreshToken(user: IUser): string {
+    return jwt.sign(
+        { sub: String(user._id) },
+        getJwtSecret(),
+        { expiresIn: REFRESH_TOKEN_EXPIRES_IN }
+    );
+}
+
+/** 회원가입 (모델 pre-save 훅이 비번 해시 처리) */
+export const registerUser = async (id: string, name: string, password: string) => {
+    const existing = await User.findOne({ id }).lean().exec();
+    if (existing) throw new ValidationError('이미 존재하는 사용자입니다.');
+    const user = new User({ id, name, password });
+    await user.save();
+};
+
+/** 로그인 */
+export const loginService = async (id: string, password: string): Promise<LoginResult> => {
     const user = await User.findOne({ id }).exec();
-    if (!user) throw new Error('Invalid credentials');
+    if (!user) throw new AuthError('Invalid credentials.');
 
-    const ok = await user.comparePassword(password);
-    if (!ok) throw new Error('Invalid credentials');
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) throw new AuthError('Invalid credentials.');
 
-    const accessToken = generateAccessToken(user);       // ← 함수 내부에서 role 계산 & 포함
-    const refreshToken = generateRefreshToken(user.id);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
     user.refreshToken = refreshToken;
     await user.save();
-
-    const role: Role = (user.myTeams?.length ?? 0) > 0 ? 'leader' : 'member';
 
     return {
         accessToken,
         refreshToken,
         user: {
-            id: user.id,
+            id: String(user._id),     // 응답은 _id 문자열로 통일
             name: user.name,
-            hasTeams: user.hasTeams ?? [],
-            myTeams: user.myTeams ?? [],
-            role,                                            // 응답 데이터에도 제공
+            role: resolveRole(user),
         },
     };
-}
+};
 
-export async function refreshTokenService(
-    token: string
-): Promise<{ accessToken: string; refreshToken: string }> {
-    let payload: { id: string };
+/** 리프레시 토큰 재발급 */
+export const refreshTokenService = async (token: string): Promise<{ accessToken: string; refreshToken: string }> => {
+    let payload: any;
     try {
-        payload = jwt.verify(token, JWT_SECRET) as { id: string };
+        payload = jwt.verify(token, getJwtSecret()) as { sub: string };
     } catch {
-        throw new Error('Invalid refresh token');
+        throw new AuthError('Invalid refresh token.');
     }
 
-    const user = await User.findById(payload.id).exec();
+    const user = await User.findById(payload.sub).exec();
     if (!user || user.refreshToken !== token) {
-        throw new Error('Refresh token not recognized');
+        throw new AuthError('Refresh token not recognized.');
     }
 
-    // 멤버십 변경이 있었을 수 있으므로 여기서도 최신 role로 다시 서명
-    const accessToken = generateAccessToken(user);       // ← role 포함
-    const refreshToken = generateRefreshToken(user.id);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
     user.refreshToken = refreshToken;
     await user.save();
 
     return { accessToken, refreshToken };
-}
+};

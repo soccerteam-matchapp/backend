@@ -3,7 +3,7 @@
 .env.*.local
 
 # 2) 의존성 디렉터리
-node_modules/
+node_modules
 
 # 3) 빌드 결과물
 dist/
@@ -40,4 +40,9 @@ Thumbs.db
 *.sln
 
 # 10) 기타
-*.orig      # 머지 충돌 때 생기는 백업 파일
+*.orig      # 머지 충돌 때 생기는 백업 파일node_modules/
+dist/
+.env
+node_modules/
+dist/
+.env

@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info:
+  title: sportly
+  version: 1.0.0
+  description: sportly - 백엔드 API 문서
+servers:
+  - url: http://localhost:3000
+paths:
+  $ref: './routes.yaml'   # ← 아래 routes.yaml로 분리

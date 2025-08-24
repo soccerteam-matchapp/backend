@@ -1,16 +1,22 @@
+// src/middlewares/error.handler.ts
 import { Request, Response, NextFunction } from 'express';
 
-// 우리가 만든 AppError 기반 처리 (없으면 일반 Error도 처리)
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-    console.error('Error:', err);
+export const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunction) => {
+    // MongoDB duplicate key => 409
+    if (err?.code === 11000) {
+        err = Object.assign(new Error('이미 존재하는 아이디입니다.'), { statusCode: 409, error: 'duplicate_key' });
+    }
 
-    // AppError 기반이면 그대로 사용
-    const statusCode = err.statusCode || 500;
-    const status = err.status || 'error';
-    const message = err.isOperational ? err.message : '서버 오류가 발생했습니다.';
+    if (err?.message === 'Invalid credentials') {
+        err = Object.assign(new Error('Invalid credentials.'), {
+            statusCode: 401, error: 'invalid_credentials'
+        });
+    }
+    const statusCode = Number(err?.statusCode) || 500;
+    const message = err?.message || '서버 오류가 발생했습니다.';
+    const error = err?.error || 'server_error';
 
-    res.status(statusCode).json({
-        status,
-        message
-    });
+
+
+    res.status(statusCode).json({ status: statusCode, message, data: null, error });
 };
