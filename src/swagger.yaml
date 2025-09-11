@@ -146,6 +146,427 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/ServerError'
+  /teams:
+    post:
+      tags:
+        - Team
+      summary: 팀 만들기(초대코드 발급)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamName:
+                  type: string
+              required:
+                - teamName
+            examples:
+              default:
+                value:
+                  teamName: FC Tools
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: 팀 _id
+                          teamName:
+                            type: string
+                          inviteCode:
+                            type: string
+                            description: 6자리 초대코드
+                          leader:
+                            type: string
+                            description: 팀장 _id
+                          memberNum:
+                            type: integer
+                          canMatch:
+                            type: boolean
+                            description: 멤버 9명 이상이면 true
+                        required:
+                          - id
+                          - teamName
+                          - inviteCode
+                          - leader
+                          - memberNum
+                          - canMatch
+              examples:
+                created:
+                  value:
+                    status: 201
+                    message: 팀 생성 성공
+                    data:
+                      id: 66cc7a7f0c2e3a1234567890
+                      teamName: FC Tools
+                      inviteCode: '123456'
+                      leader: 66c7e2d2f3a4f2bb1e8e1b11
+                      memberNum: 1
+                      canMatch: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  '/teams/invite/{code}':
+    get:
+      tags:
+        - Team
+      summary: 초대코드로 팀 조회
+      description: 초대코드로 팀 기본 정보를 조회합니다.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: 발급된 6자리 초대코드
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          teamName:
+                            type: string
+                          inviteCode:
+                            type: string
+                          memberNum:
+                            type: integer
+                          canMatch:
+                            type: boolean
+                        required:
+                          - id
+                          - teamName
+                          - inviteCode
+                          - memberNum
+                          - canMatch
+              examples:
+                ok:
+                  value:
+                    status: 200
+                    message: 팀 조회 성공
+                    data:
+                      id: 66cc7a7f0c2e3a1234567890
+                      teamName: FC Tools
+                      inviteCode: '123456'
+                      memberNum: 1
+                      canMatch: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              examples:
+                notFound:
+                  value:
+                    status: 404
+                    message: 해당 초대코드의 팀을 찾을 수 없습니다.
+                    data: null
+                    error: not_found
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /teams/join:
+    post:
+      tags:
+        - Team
+      summary: 초대코드로 가입 요청
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inviteCode:
+                  type: string
+              required:
+                - inviteCode
+            examples:
+              default:
+                value:
+                  inviteCode: '123456'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          teamId:
+                            type: string
+                          pendingCount:
+                            type: integer
+                        required:
+                          - teamId
+                          - pendingCount
+              examples:
+                ok:
+                  value:
+                    status: 200
+                    message: 가입 요청 접수
+                    data:
+                      teamId: 66cc7a7f0c2e3a1234567890
+                      pendingCount: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              examples:
+                notFound:
+                  value:
+                    status: 404
+                    message: 해당 초대코드의 팀을 찾을 수 없습니다.
+                    data: null
+                    error: not_found
+        '500':
+          $ref: '#/components/responses/ServerError'
+  '/teams/{teamId}/requests':
+    get:
+      tags:
+        - Team
+      summary: 가입 대기 목록(팀장 전용)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+            description: 팀 _id(ObjectId)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                            name:
+                              type: string
+                            id:
+                              type: string
+                              description: 로그인 아이디(username)
+                          required:
+                            - _id
+                            - name
+                            - id
+              examples:
+                ok:
+                  value:
+                    status: 200
+                    message: 가입 대기 목록
+                    data:
+                      - _id: 66c7e2d2f3a4f2bb1e8e1b11
+                        name: 김철수
+                        id: cs123
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              examples:
+                forbidden:
+                  value:
+                    status: 403
+                    message: 팀장만 확인할 수 있습니다.
+                    data: null
+                    error: forbidden
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              examples:
+                notFound:
+                  value:
+                    status: 404
+                    message: 팀을 찾을 수 없습니다.
+                    data: null
+                    error: not_found
+        '500':
+          $ref: '#/components/responses/ServerError'
+  '/teams/{teamId}/requests/decide':
+    post:
+      tags:
+        - Team
+      summary: 가입 요청 일괄 수락/거절(팀장 전용)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+            description: 팀 _id(ObjectId)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accept:
+                  type: array
+                  items:
+                    type: string
+                    description: 수락할 사용자 _id
+                reject:
+                  type: array
+                  items:
+                    type: string
+                    description: 거절할 사용자 _id
+              required:
+                - accept
+                - reject
+            examples:
+              acceptSome:
+                value:
+                  accept:
+                    - 66c7e2d2f3a4f2bb1e8e1b11
+                  reject: []
+              rejectSome:
+                value:
+                  accept: []
+                  reject:
+                    - 66c7e2d2f3a4f2bb1e8e1b22
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BaseResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          teamId:
+                            type: string
+                          memberNum:
+                            type: integer
+                          canMatch:
+                            type: boolean
+                          accepted:
+                            type: integer
+                          rejected:
+                            type: integer
+                          remainingPending:
+                            type: integer
+                        required:
+                          - teamId
+                          - memberNum
+                          - canMatch
+                          - accepted
+                          - rejected
+                          - remainingPending
+              examples:
+                ok:
+                  value:
+                    status: 200
+                    message: 처리 완료
+                    data:
+                      teamId: 66cc7a7f0c2e3a1234567890
+                      memberNum: 9
+                      canMatch: true
+                      accepted: 1
+                      rejected: 0
+                      remainingPending: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              examples:
+                forbidden:
+                  value:
+                    status: 403
+                    message: 팀장만 처리할 수 있습니다.
+                    data: null
+                    error: forbidden
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              examples:
+                notFound:
+                  value:
+                    status: 404
+                    message: 팀을 찾을 수 없습니다.
+                    data: null
+                    error: not_found
+        '500':
+          $ref: '#/components/responses/ServerError'
 components:
   securitySchemes:
     BearerAuth:
