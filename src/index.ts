@@ -6,6 +6,7 @@ import { errorHandler } from './middlewares/error.handler';
 
 import teamRoutes from './routes/team.routes';
 import matchRoutes from './routes/match.routes';
+import phoneRoutes from './routes/phone.routes';
 
 import path from 'path';
 import swaggerUi from 'swagger-ui-express'
@@ -30,6 +31,7 @@ app.use(errorHandler);
 
 app.use('/api/teams', teamRoutes);   // ← 인증 미들웨어는 라우터 안에서 적용됨
 app.use('/api/matches', matchRoutes);   // ← 인증 미들웨어는 라우터 안에서 적용됨
+app.use('/api/auth/phone', phoneRoutes);
 
 const PORT = process.env.PORT ?? 3000;
 const MONGO_URI = process.env.MONGO_URI;
