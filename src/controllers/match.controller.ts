@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createMatchRequest, applyMatchRequest } from "../services/match.service";
+import { createMatchRequest, applyMatchRequest, getAppliedTeams, acceptMatchTeam, getConfirmedMatches } from "../services/match.service";
 import { ValidationError, NotFoundError } from "../utils/errors";
 import { Match } from "../models/match.model";
 
@@ -64,5 +64,45 @@ export const apply = async (req: Request, res: Response) => {
         status: 201,
         message: "매칭 신청 성공",
         data: match,
+    });
+};
+
+export const participants = async (req: Request, res: Response) => {
+    const { matchId } = req.params;
+    if (!matchId) {
+        throw new ValidationError("matchId가 필요합니다.");
+    }
+
+    const participants = await getAppliedTeams(matchId, (req as any).userId);
+
+    return res.status(200).json({
+        status: 200,
+        message: "매칭 참가팀 조회 성공",
+        data: participants,
+    });
+};
+
+export const acceptTeam = async (req: Request, res: Response) => {
+    const { matchId, teamId } = req.body;
+    if (!matchId || !teamId) {
+        throw new ValidationError("matchId와 teamId가 필요합니다.");
+    }
+
+    const match = await acceptMatchTeam(matchId, (req as any).userId, teamId);
+
+    return res.status(200).json({
+        status: 200,
+        message: "팀 매칭 수락 완료",
+        data: match,
+    });
+};
+
+export const confirmed = async (req: Request, res: Response) => {
+    const matches = await getConfirmedMatches();
+
+    return res.status(200).json({
+        status: 200,
+        message: "성사된 매칭 조회 성공",
+        data: matches,
     });
 };

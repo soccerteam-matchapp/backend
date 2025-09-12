@@ -77,3 +77,74 @@ export async function applyMatchRequest(
 
     return match;
 }
+
+export async function getAppliedTeams(matchId: string, userId: string) {
+    const match = await Match.findById(matchId)
+        .populate({
+            path: "participants",
+            select: "teamName leader members canMatch",
+        })
+        .exec();
+
+    if (!match) {
+        throw new NotFoundError("매칭을 찾을 수 없습니다.");
+    }
+
+    // 팀장 권한 확인
+    if (!match.leader.equals(new Types.ObjectId(userId))) {
+        throw new ForbiddenError("해당 매칭의 팀장만 참가팀을 조회할 수 있습니다.");
+    }
+
+    if (match.participants.length === 0) {
+        return {
+            message: "아직 신청한 팀이 없습니다.",
+            participants: [],
+        };
+    }
+    return match.participants;
+}
+
+export async function acceptMatchTeam(matchId: string, userId: string, acceptedTeamId: string) {
+    const match = await Match.findById(matchId).populate("participants").exec();
+    if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
+
+    // 팀장 권한 확인
+    if (!match.leader.equals(new Types.ObjectId(userId))) {
+        throw new ForbiddenError("해당 매칭의 팀장만 팀을 수락할 수 있습니다.");
+    }
+
+    // 신청 팀 확인
+    if (!match.participants.some(p => p._id.equals(acceptedTeamId))) {
+        throw new ConflictError("해당 팀은 매칭 신청을 하지 않았습니다.");
+    }
+
+    // 매칭 수락 처리
+    match.status = "accepted";
+    match.acceptedTeam = new Types.ObjectId(acceptedTeamId);
+    await match.save();
+
+    return match;
+}
+
+export async function getConfirmedMatches() {
+    const matches = await Match.find({
+        status: "accepted",       // 수락된 매칭만
+        acceptedTeam: { $exists: true }  // acceptedTeam이 있는 매칭
+    })
+        .populate({
+            path: "team",
+            select: "teamName leader members",
+        })
+        .populate({
+            path: "acceptedTeam",
+            select: "teamName leader members",
+        })
+        .sort({ createdAt: -1 })
+        .exec();
+
+    if (!matches || matches.length === 0) {
+        throw new NotFoundError("성사된 매칭이 없습니다.");
+    }
+
+    return matches;
+}
