@@ -6,10 +6,11 @@ export interface IMatch extends Document {
     date: string;                // 경기 날짜
     location: string;          // 경기 장소
     players: number;           // 필요한 인원
-    status: "pending" | "accepted" | "rejected" | "done";
+    status: "pending" | "accepted";
     createdAt: Date;
     updatedAt: Date;
     participants: Types.ObjectId[]; // 신청한 팀 리스트
+    acceptedTeam?: Types.ObjectId;
 }
 
 const MatchSchema = new Schema<IMatch>(
@@ -21,6 +22,7 @@ const MatchSchema = new Schema<IMatch>(
         players: { type: Number, required: true },
         status: { type: String, enum: ["pending", "accepted", "rejected", "done"], default: "pending" },
         participants: [{ type: Types.ObjectId, ref: "Team", default: [] }],
+        acceptedTeam: { type: Schema.Types.ObjectId, ref: "Team" }, // 여기 추가
     },
     { timestamps: true }
 );
