@@ -1,17 +1,18 @@
 openapi: 3.0.3
 info:
-  title: Soccer Matching App - Auth API
-  version: "1.0.0"
-  description: >
-    로그인/회원가입/토큰 재발급 API.
-    모든 응답은 { status:number, message:string, data:any|null, error?:string } 포맷을 사용합니다.
+  title: Sportly API
+  version: 1.0.0
+  description: Sportly 백엔드 API (status/message/data 응답 포맷)
 servers:
-  - url: http://localhost:3000/api   # 실제 엔드포인트가 /api/auth/* 라서 /api를 base로 둠
+  - url: https://{host}
+    variables:
+      host:
+        default: localhost:3000
 tags:
   - name: Auth
-    description: 인증 관련 엔드포인트
-paths:
-  $ref: "./routes.yaml"
+  - name: Team
+  - name: Match
+  - name: Phone
 
 components:
   securitySchemes:
@@ -19,184 +20,192 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
-        액세스 토큰을 Bearer 스킴으로 전송합니다. 예) "Authorization: Bearer <token>"
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BaseResponse" }
+          examples:
+            bad:
+              value: { status: 400, message: "요청 형식이 올바르지 않습니다.", data: null, error: "bad_request" }
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BaseResponse" }
+          examples:
+            unauthorized:
+              value: { status: 401, message: "인증이 필요합니다.", data: null, error: "unauthorized" }
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BaseResponse" }
+          examples:
+            forbidden:
+              value: { status: 403, message: "권한이 없습니다.", data: null, error: "forbidden" }
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BaseResponse" }
+          examples:
+            conflict:
+              value: { status: 409, message: "리소스 충돌", data: null, error: "conflict" }
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BaseResponse" }
+          examples:
+            notFound:
+              value: { status: 404, message: "리소스를 찾을 수 없습니다.", data: null, error: "not_found" }
+    ServerError:
+      description: Server Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/BaseResponse" }
+          examples:
+            error:
+              value: { status: 500, message: "서버 오류", data: null, error: "server_error" }
 
   schemas:
     BaseResponse:
       type: object
       properties:
-        status:
-          type: integer
-          format: int32
-          example: 200
-        message:
-          type: string
-          example: OK
-        data:
-          nullable: true
-        error:
-          type: string
-          nullable: true
-          description: 에러 코드(있는 경우)
-      required: [status, message]
-
-    Role:
-      type: string
-      enum: [leader, member]
+        status: { type: integer, example: 200 }
+        message: { type: string, example: "OK" }
+        data: {}
+        error: { type: string, nullable: true, example: null }
+      required: [status, message, data]
 
     RegisterRequest:
       type: object
       properties:
-        id:
+        id: { type: string, example: "soccer123" }
+        name: { type: string, example: "정혜원" }
+        password: { type: string, minLength: 8, example: "secret12" }
+        username:
           type: string
-          description: 로그인 아이디(중복 불가)
-          minLength: 3
-        name:
-          type: string
-          description: 사용자 이름 (별칭 `username`도 허용되며 내부에서 name으로 매핑됨)
-        password:
-          type: string
-          minLength: 6
-      required: [id, name, password]
-
+          description: username를 보내면 내부적으로 name으로 매핑 처리
+      required: [id, password]
     LoginRequest:
       type: object
       properties:
-        id:
-          type: string
-        password:
-          type: string
+        id: { type: string }
+        password: { type: string }
       required: [id, password]
-
     RefreshRequest:
       type: object
       properties:
-        refreshToken:
-          type: string
+        refreshToken: { type: string }
       required: [refreshToken]
 
-    UserSummary:
+    UserPublic:
       type: object
       properties:
-        id:
-          type: string
-          description: MongoDB _id 문자열
-        name:
-          type: string
-        role:
-          $ref: "#/components/schemas/Role"
+        id: { type: string, description: "사용자 _id(ObjectId)" }
+        name: { type: string }
+        role: { type: string, enum: ["member", "leader"] }
       required: [id, name, role]
-
-    TokensData:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-      required: [accessToken, refreshToken]
 
     LoginData:
       type: object
       properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-        user:
-          $ref: "#/components/schemas/UserSummary"
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        user: { $ref: "#/components/schemas/UserPublic" }
       required: [accessToken, refreshToken, user]
 
-  responses:
-    BadRequest:
-      description: 잘못된 요청(ValidationError 등)
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 400
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: validation_error
-          examples:
-            missingFields:
-              value: { status: 400, message: "id, name, password가 모두 필요합니다.", data: null, error: "validation_error" }
+    TokensData:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+      required: [accessToken, refreshToken]
 
-    Unauthorized:
-      description: 인증 실패(토큰 만료/무효, 잘못된 자격증명 등)
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 401
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: invalid_credentials
-          examples:
-            invalidCredentials:
-              value: { status: 401, message: "Invalid credentials.", data: null, error: "invalid_credentials" }
-            tokenExpired:
-              value: { status: 401, message: "token expired", data: null, error: "token_expired" }
-            tokenInvalid:
-              value: { status: 401, message: "invalid token", data: null, error: "token_invalid" }
+    Team:
+      type: object
+      properties:
+        id: { type: string, description: "팀 _id" }
+        teamName: { type: string }
+        inviteCode: { type: string, description: "6자리" }
+        leader: { type: string, description: "팀장 _id" }
+        memberNum: { type: integer }
+        canMatch: { type: boolean, description: "멤버 9명 이상이면 true" }
+      required: [id, teamName, inviteCode, leader, memberNum, canMatch]
 
-    Conflict:
-      description: 자원 충돌(중복 아이디 등)
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 409
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: duplicate_key
-          examples:
-            duplicateId:
-              value: { status: 409, message: "이미 존재하는 아이디입니다.", data: null, error: "duplicate_key" }
+    TeamJoinDecision:
+      type: object
+      properties:
+        accept:
+          type: array
+          items: { type: string, description: "수락할 사용자 _id" }
+        reject:
+          type: array
+          items: { type: string, description: "거절할 사용자 _id" }
+      required: [accept, reject]
 
-    ServerError:
-      description: 서버 오류
-      content:
-        application/json:
-          schema:
-            allOf:
-              - $ref: "#/components/schemas/BaseResponse"
-              - type: object
-                properties:
-                  status:
-                    type: integer
-                    example: 500
-                  data:
-                    nullable: true
-                    example: null
-                  error:
-                    type: string
-                    example: server_error
-          examples:
-            default:
-              value: { status: 500, message: "서버 오류가 발생했습니다.", data: null, error: "server_error" }
+    PhoneRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          description: "E.164 (예: +821012345678)"
+          example: "+821012345678"
+      required: [phone]
+    PhoneVerifyRequest:
+      type: object
+      properties:
+        phone: { type: string, example: "+821012345678" }
+        code: { type: string, example: "123456" }
+      required: [phone, code]
+    PhoneVerifyData:
+      type: object
+      properties:
+        verified: { type: boolean, example: true }
+        expiresAt: { type: string, format: date-time, nullable: true }
+
+    Match:
+      type: object
+      properties:
+        id: { type: string }
+        hostTeamId: { type: string }
+        guestTeamId: { type: string, nullable: true }
+        date: { type: string, format: date-time, description: "경기 일시(ISO8601)" }
+        place: { type: string }
+        skillLevel: { type: string, example: "intermediate" }
+        exProCount: { type: integer, example: 1, description: "선출 인원수" }
+        fieldCost: { type: integer, example: 120000, description: "구장비(원)" }
+        guestCostShare: { type: integer, example: 60000, description: "게스트 팀 부담비용(원)" }
+        gameFormat: { type: string, example: "11v11 · 45min x2" }
+        isMatched: { type: boolean }
+        createdAt: { type: string, format: date-time }
+      required: [id, hostTeamId, date, place, isMatched]
+
+    MatchCreateRequest:
+      type: object
+      properties:
+        date: { type: string, format: date-time }
+        place: { type: string }
+        skillLevel: { type: string }
+        exProCount: { type: integer }
+        fieldCost: { type: integer }
+        guestCostShare: { type: integer }
+        gameFormat: { type: string }
+      required: [date, place]
+
+    MatchApplyRequest:
+      type: object
+      properties:
+        guestTeamId: { type: string, description: "신청하는 게스트 팀 _id" }
+      required: [guestTeamId]
+
+    MatchDecideRequest:
+      type: object
+      properties:
+        guestTeamId: { type: string }
+        accept: { type: boolean }
+      required: [guestTeamId, accept]
