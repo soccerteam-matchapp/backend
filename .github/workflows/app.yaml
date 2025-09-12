@@ -1,0 +1,12 @@
+name: sportly
+app: node@18
+options:
+  git:
+    url: https://github.com/soccerteam-matchapp/backend.git
+    branch: dev            # 브랜치별 스테이지 운영 시 dev/main 등으로 관리
+  env:
+    - name: NODE_ENV
+      value: production
+  install: npm i -g pnpm && pnpm install --frozen-lockfile=false --prod=false && pnpm run build
+  ports: 3000
+  start: pnpm start

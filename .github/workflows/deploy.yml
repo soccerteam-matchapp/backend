@@ -1,0 +1,29 @@
+name: Deploy to Cloudtype
+
+on:
+  push:
+    branches: [dev, main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: cloudtype-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # (선택) Node/PNPM 캐시 등 CI 단계가 필요하면 여기서 수행
+      # - uses: actions/setup-node@v4
+      #   with: { node-version: 18 }
+
+      - name: Deploy to Cloudtype
+        uses: cloudtype-github-actions/deploy@v1
+        with:
+          token: ${{ secrets.CLOUDTYPE_TOKEN }}     # 2단계에서 만든 시크릿
+          project: sportly                # 클라우드타입 ‘프로젝트’ 이름
+          stage: dev                                # dev/main 등 배포환경 이름
+          file: .cloudtype/app.yaml                 # 배포 설정 파일 경로
