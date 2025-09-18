@@ -7,6 +7,12 @@ options:
   env:
     - name: NODE_ENV
       value: production
-  install: npm i -g pnpm && pnpm install --frozen-lockfile=false --prod=false && pnpm run build
+  install: |
+    set -euxo pipefail
+    corepack enable
+    corepack prepare pnpm@9 --activate || npm i -g pnpm
+    pnpm -v
+    pnpm install --no-frozen-lockfile
+    pnpm run -r build || pnpm run build
   ports: 3000
   start: pnpm start
