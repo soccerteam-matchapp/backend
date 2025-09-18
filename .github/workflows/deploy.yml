@@ -17,5 +17,5 @@ jobs:
         with:
           token: ${{ secrets.CLOUDTYPE_TOKEN }}   # @hyewon5617 스코프에서 발급한 API 키
           project: '@hyewon5617/sportly'          # 대시보드 기준: 스코프/프로젝트
-          stage: dev                               # 스테이지 = 배포환경 (네 화면에 파란 dev 라벨)
+          stage: hyewon5617                           # 스테이지 = 배포환경 (네 화면에 파란 dev 라벨)
           file: .cloudtype/app.yaml                # 아래 앱 설정 파일 경로
