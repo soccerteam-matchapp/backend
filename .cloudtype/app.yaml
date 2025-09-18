@@ -8,11 +8,21 @@ options:
     - name: NODE_ENV
       value: production
   install: |
-    set -euxo pipefail
-    corepack enable
-    corepack prepare pnpm@9 --activate || npm i -g pnpm
+    set -e
+    set -x
+    # corepack이 있으면 pnpm 활성화, 없으면 전역설치
+    if command -v corepack >/dev/null 2>&1; then
+      corepack enable
+      corepack prepare pnpm@9 --activate || true
+    else
+      npm i -g pnpm
+    fi
+
     pnpm -v
+    # lockfile 불일치로 막히지 않게
     pnpm install --no-frozen-lockfile
+
+    # 워크스페이스/단일 둘 다 커버
     pnpm run -r build || pnpm run build
   ports: 3000
   start: pnpm start

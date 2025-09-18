@@ -34,8 +34,8 @@
 	"scripts": {
 		"api-docs": "swagger-cli bundle ./src/swagger/openapi.yaml --outfile src/swagger.yaml --type yaml",
 		"predev": "pnpm run api-docs",
-		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-		"build": "tsc",
-		"start": "tsc && node dist/index.js"
+		"dev": "nodemon src/index.ts",
+		"build": "tsc -p tsconfig.json",
+		"start": "node dist/index.js"
 	}
 }
