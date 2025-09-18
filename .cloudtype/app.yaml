@@ -10,4 +10,3 @@ options:
   install: npm i -g pnpm && pnpm install --frozen-lockfile=false --prod=false && pnpm run build
   ports: 3000
   start: pnpm start
-

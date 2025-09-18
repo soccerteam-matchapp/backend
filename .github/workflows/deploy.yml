@@ -1,19 +1,21 @@
-# .github/workflows/deploy.yml
 name: Deploy to Cloudtype
+
 on:
   push:
-    branches: [dev]
-  workflow_dispatch: {}
+    branches: [dev]      # dev 브랜치에 푸시할 때만 실행
+  workflow_dispatch: {}  # 수동 실행 버튼
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Deploy to Cloudtype
         uses: cloudtype-github-actions/deploy@v1
         with:
-          token: ${{ secrets.CLOUDTYPE_TOKEN }}   # @hyewon5617 스코프에서 발급한 키
-          project: '@hyewon5617/sportly'          # 계정/프로젝트
-          stage: dev                               # ← 스테이지(=배포환경) 이름
-          file: .cloudtype/app.yaml               # 이 경로에 파일 있어야 함
+          token: ${{ secrets.CLOUDTYPE_TOKEN }}   # @hyewon5617 스코프에서 발급한 API 키
+          project: '@hyewon5617/sportly'          # 대시보드 기준: 스코프/프로젝트
+          stage: dev                               # 스테이지 = 배포환경 (네 화면에 파란 dev 라벨)
+          file: .cloudtype/app.yaml                # 아래 앱 설정 파일 경로
