@@ -33,7 +33,9 @@ app.use('/api/teams', teamRoutes);   // ← 인증 미들웨어는 라우터 안
 app.use('/api/matches', matchRoutes);   // ← 인증 미들웨어는 라우터 안에서 적용됨
 app.use('/api/auth/phone', phoneRoutes);
 
-const PORT = process.env.PORT ?? 3000;
+const PORT = Number(process.env.PORT || 3000);
+const HOST = "0.0.0.0";
+
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) throw new Error('MONGO_URI가 설정되지 않았습니다.');
 
@@ -43,7 +45,9 @@ mongoose
     .connect(MONGO_URI)
     .then(() => {
         console.log('MongoDB connected');
-        app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+        app.listen(PORT, HOST, () => {
+            console.log(`🚀 Server listening on http://${HOST}:${PORT}`);
+        });;
     })
     .catch(err => {
         console.error('MongoDB connection error:', err);
