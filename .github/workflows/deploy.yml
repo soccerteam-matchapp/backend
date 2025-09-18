@@ -12,10 +12,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Cloudtype
+      - name: Deploy to Cloudtype (inline yaml)
         uses: cloudtype-github-actions/deploy@v1
         with:
           token: ${{ secrets.CLOUDTYPE_TOKEN }}
-          project: sportly/sportly    # 예: soccerteam-matchapp/backend
-          stage: dev                         # dev 스테이지가 실제로 존재해야 함
-          file: .cloudtype/app.yaml          # ← 이 경로에 파일이 있어야 함
+          project: sportly/sportly   # 예: soccerteam-matchapp/backend
+          stage: dev
+          yaml: |
+            name: backend
+            app: node@18
+            options:
+              git:
+                url: https://github.com/soccerteam-matchapp/backend.git
+                branch: dev
+              env:
+                - name: NODE_ENV
+                  value: production
+              install: npm i -g pnpm && pnpm install --frozen-lockfile=false --prod=false && pnpm run build
+              ports: 3000
+              start: pnpm start
