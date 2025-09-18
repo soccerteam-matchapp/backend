@@ -2,12 +2,8 @@ name: Deploy to Cloudtype
 
 on:
   push:
-    branches: [dev, main]
+    branches: [dev]
   workflow_dispatch: {}
-
-concurrency:
-  group: cloudtype-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -16,14 +12,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # (선택) Node/PNPM 캐시 등 CI 단계가 필요하면 여기서 수행
-      # - uses: actions/setup-node@v4
-      #   with: { node-version: 18 }
-
       - name: Deploy to Cloudtype
         uses: cloudtype-github-actions/deploy@v1
         with:
-  token: ${{ secrets.CLOUDTYPE_TOKEN }}
-  project: sportly/sportly  # 예: soccerteam-matchapp/backend (대시보드에서 실제 값 확인)
-  stage: dev
-  file: app.yaml                  # ← 여기로 변경(.cloudtype/app.yaml 아님)
+          token: ${{ secrets.CLOUDTYPE_TOKEN }}
+          project: sportly/sportly    # 예: soccerteam-matchapp/backend
+          stage: dev                         # dev 스테이지가 실제로 존재해야 함
+          file: .cloudtype/app.yaml          # ← 이 경로에 파일이 있어야 함
