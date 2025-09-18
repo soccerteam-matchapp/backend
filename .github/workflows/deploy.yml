@@ -23,7 +23,7 @@ jobs:
       - name: Deploy to Cloudtype
         uses: cloudtype-github-actions/deploy@v1
         with:
-          token: ${{ secrets.CLOUDTYPE_TOKEN }}     # 2단계에서 만든 시크릿
-          project: sportly                # 클라우드타입 ‘프로젝트’ 이름
-          stage: dev                                # dev/main 등 배포환경 이름
-          file: .cloudtype/app.yaml                 # 배포 설정 파일 경로
+  token: ${{ secrets.CLOUDTYPE_TOKEN }}
+  project: sportly/sportly  # 예: soccerteam-matchapp/backend (대시보드에서 실제 값 확인)
+  stage: dev
+  file: app.yaml                  # ← 여기로 변경(.cloudtype/app.yaml 아님)
