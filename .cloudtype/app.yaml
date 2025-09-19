@@ -9,7 +9,7 @@ options:
       value: production
   install: |
     set -e
-    # pnpm 확보
+    # pnpm 보장
     if command -v corepack >/dev/null 2>&1; then
       corepack enable
       corepack prepare pnpm@9 --activate || true
@@ -17,11 +17,11 @@ options:
       npm i -g pnpm
     fi
 
+    pnpm -v
     pnpm install --no-frozen-lockfile
-    pnpm run -r build || pnpm run build
+    pnpm run build
 
-    # 빌드 산출물 확인 (로그에 남김)
     echo "---- dist listing ----"
     find dist -maxdepth 2 -type f -print || true
   ports: 3000
-  start: node dist/index.js    # ← 여기! npm/pnpm 경유 없이 직접 실행
+  start: node ./dist/index.js
