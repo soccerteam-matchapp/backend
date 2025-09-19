@@ -23,13 +23,17 @@ export async function createMatchRequest(
         throw new ForbiddenError("팀원 수가 부족하여 매칭을 신청할 수 없습니다. (최소 9명 필요)");
     }
 
+    const matchDate = new Date(date);
+    const expireAt = new Date(matchDate.getTime() + 60 * 60 * 1000); // 경기 1시간 뒤
+
     const match = await Match.create({
         team: team._id,
         leader: leaderId,
-        date,
+        date: matchDate,  // ✅ Date 저장
         location,
         players,
         status: "pending",
+        expireAt,         // ✅ TTL 필드
     });
 
     return match;
