@@ -9,7 +9,6 @@ options:
       value: production
   install: |
     set -e
-    set -x
     # pnpm 확보
     if command -v corepack >/dev/null 2>&1; then
       corepack enable
@@ -18,17 +17,11 @@ options:
       npm i -g pnpm
     fi
 
-    pnpm -v
-    # 의존성 설치 (lockfile 불일치로 막히지 않게)
     pnpm install --no-frozen-lockfile
-
-    # 빌드 실행
     pnpm run -r build || pnpm run build
 
-    # 👉 빌드 산출물 존재 확인 (디버깅용 로그)
-    echo "---- ls dist ----"
-    ls -la dist || true
-    echo "---- tree dist (최대 2depth) ----"
+    # 빌드 산출물 확인 (로그에 남김)
+    echo "---- dist listing ----"
     find dist -maxdepth 2 -type f -print || true
   ports: 3000
-  start: pnpm start
+  start: node dist/index.js    # ← 여기! npm/pnpm 경유 없이 직접 실행
