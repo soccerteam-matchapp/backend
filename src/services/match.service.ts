@@ -38,7 +38,8 @@ export async function createMatchRequest(
 export async function applyMatchRequest(
     teamId: string,
     leaderId: string,
-    matchId: string // 신청할 매칭 ID
+    matchId: string, // 신청할 매칭 ID
+    players: number
 ) {
     const team = await Team.findById(teamId);
     if (!team) throw new NotFoundError("팀을 찾을 수 없습니다.");
@@ -72,7 +73,11 @@ export async function applyMatchRequest(
         match.participants = [];
     }
 
-    match.participants.push(team._id as Types.ObjectId);
+    match.participants.push({
+        team: team._id as Types.ObjectId,
+        players
+    } as any);
+
     await match.save();
 
     return match;
