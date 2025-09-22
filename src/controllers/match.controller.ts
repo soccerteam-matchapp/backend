@@ -49,15 +49,16 @@ export const list = async (req: Request, res: Response) => {
 };
 
 export const apply = async (req: Request, res: Response) => {
-    const { teamId, matchId } = req.body;
-    if (!teamId || !matchId) {
+    const { teamId, matchId, players } = req.body;
+    if (!teamId || !matchId || !players) {
         throw new ValidationError("필수 값이 누락되었습니다.");
     }
 
     const match = await applyMatchRequest(
         teamId,
         (req as any).userId,
-        matchId
+        matchId,
+        players
     );
 
     return res.status(201).json({
@@ -66,6 +67,7 @@ export const apply = async (req: Request, res: Response) => {
         data: match,
     });
 };
+
 
 export const participants = async (req: Request, res: Response) => {
     const { matchId } = req.params;
