@@ -21,7 +21,12 @@ const MatchSchema = new Schema<IMatch>(
         location: { type: String, required: true },
         players: { type: Number, required: true },
         status: { type: String, enum: ["pending", "accepted", "rejected", "done"], default: "pending" },
-        participants: [{ type: Types.ObjectId, ref: "Team", default: [] }],
+        participants: [
+            {
+                team: { type: Types.ObjectId, ref: "Team", required: true },
+                players: { type: Number, required: true } // 참가 인원 수
+            }
+        ],
         acceptedTeam: { type: Schema.Types.ObjectId, ref: "Team" }, // 여기 추가
     },
     { timestamps: true }
