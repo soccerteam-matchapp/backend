@@ -35,7 +35,8 @@
 		"api-docs": "swagger-cli bundle ./src/swagger/openapi.yaml --outfile src/swagger.yaml --type yaml",
 		"predev": "pnpm run api-docs",
 		"dev": "nodemon src/index.ts",
-		"build": "tsc -p tsconfig.json",
+		"build": "tsc",
+		"prestart": "pnpm run build",
 		"start": "node ./dist/index.js"
 	}
 }
