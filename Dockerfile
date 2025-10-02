@@ -1,4 +1,6 @@
 ARG BUILD_ID=force-1
+ARG BUILD_ID=force-2
+ARG BUILD_ID=force-3
 # ---- Build stage: TS compile ----
 FROM node:18-alpine AS builder
 WORKDIR /app
