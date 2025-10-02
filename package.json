@@ -8,6 +8,7 @@
 		"start": "node dist/index.js"
 	},
 	"dependencies": {
+		"bcrypt": "npm:bcryptjs@^3.0.2",
 		"bcryptjs": "^3.0.2",
 		"dotenv": "^17.2.0",
 		"express": "^5.1.0",

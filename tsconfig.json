@@ -9,11 +9,14 @@
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "strict": false,
-        "noImplicitAny": false,
         "noEmitOnError": false
     },
     "include": [
         "src/**/*.ts",
         "src/types/**/*.d.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
     ]
 }
