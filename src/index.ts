@@ -9,6 +9,7 @@ import YAML from 'yamljs';
 import authRoutes from './routes/auth.routes';
 import teamRoutes from './routes/team.routes';
 import matchRoutes from './routes/match.routes';
+import attendancePoll from './routes/attendancePoll.routes';
 import phoneRoutes from './routes/phone.routes';
 import { errorHandler } from './middlewares/error.handler';
 
