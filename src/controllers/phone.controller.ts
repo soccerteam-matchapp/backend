@@ -1,103 +1,92 @@
 // src/controllers/phone.controller.ts
-import { Request, Response } from 'express';
-import { PhoneVerification } from '../models/PhoneVerification';
-import { sendVerificationSMS } from '../utils/sms';
-import bcrypt from 'bcryptjs';
+import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
+import PhoneVerificationModel from '../models/phoneVerification.model'; // ✅ 핵심
 
-const requestSchema = z.object({
-    phoneNumber: z.string().min(10).max(15),
-});
-const verifySchema = z.object({
-    phoneNumber: z.string().min(10).max(15),
-    code: z.string().length(6).regex(/^\d{6}$/),
-});
-
-// 설정값
-const CODE_LENGTH = 6;
-const CODE_TTL_MIN = 5;         // 5분 유효
-const RESEND_COOLDOWN_SEC = 60;  // 60초 재전송 제한
-const MAX_ATTEMPTS = 5;
-
-function generateCode(len = CODE_LENGTH) {
-    // 6자리 숫자
-    return [...Array(len)]
-        .map(() => Math.floor(Math.random() * 10))
-        .join('');
+// 6자리 코드 생성
+function generateCode(): string {
+    const n = crypto.randomInt(0, 1000000);
+    return n.toString().padStart(6, '0');
 }
 
-export const requestCode = async (req: Request, res: Response) => {
-    const parsed = requestSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, error: 'invalid phoneNumber' });
+const requestSchema = z.object({
+    phone: z.string().min(8, 'invalid phone'),
+});
 
-    const phoneNumber = parsed.data.phoneNumber.replace(/[^0-9]/g, '');
-    const now = new Date();
+const verifySchema = z.object({
+    phone: z.string().min(8),
+    code: z.string().length(6),
+});
 
-    let doc = await PhoneVerification.findOne({ phoneNumber });
+// 코드 요청
+export async function requestCode(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { phone } = requestSchema.parse(req.body);
+        const code = generateCode();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5분
 
-    // 쿨다운 체크
-    if (doc && now.getTime() - doc.lastSentAt.getTime() < RESEND_COOLDOWN_SEC * 1000) {
-        const remain = Math.ceil(
-            (RESEND_COOLDOWN_SEC * 1000 - (now.getTime() - doc.lastSentAt.getTime())) / 1000
+        await PhoneVerificationModel.findOneAndUpdate(
+            { phone },
+            { $set: { code, verified: false, attempts: 0, expiresAt } },
+            { upsert: true, new: true }
         );
-        return res.status(429).json({ success: false, error: `재전송은 ${remain}초 후 가능` });
+
+        // 문자 전송은 선택(환경변수 없으면 콘솔만)
+        try {
+            const apiKey = process.env.SOLAPI_API_KEY;
+            const apiSecret = process.env.SOLAPI_API_SECRET;
+            const sender = process.env.SMS_SENDER;
+            if (apiKey && apiSecret && sender) {
+                const { SolapiMessageService } = await import('solapi');
+                const messageService = new SolapiMessageService(apiKey, apiSecret);
+                await messageService.sendOne({
+                    to: phone,
+                    from: sender,
+                    text: `[인증번호] ${code} (5분 내 유효)`,
+                });
+            } else {
+                console.log(`[DEV] phone=${phone}, code=${code} (SOLAPI env 미설정)`);
+            }
+        } catch (e) {
+            console.warn('문자 전송 실패(무시):', (e as Error).message);
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        next(err);
     }
+}
 
-    const code = generateCode();
-    const codeHash = await bcrypt.hash(code, 10);
-    const expiresAt = new Date(now.getTime() + CODE_TTL_MIN * 60 * 1000);
+// 코드 검증
+export async function verifyCode(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { phone, code } = verifySchema.parse(req.body);
 
-    if (!doc) {
-        doc = await PhoneVerification.create({
-            phoneNumber,
-            codeHash,
-            expiresAt,
-            attempts: 0,
-            lastSentAt: now,
-            verified: false,
-        });
-    } else {
-        doc.codeHash = codeHash;
-        doc.expiresAt = expiresAt;
-        doc.attempts = 0;
-        doc.lastSentAt = now;
-        doc.verified = false;
-        await doc.save();
+        const doc = await PhoneVerificationModel.findOne({ phone });
+        if (!doc) return res.status(400).json({ success: false, message: '코드가 없습니다.' });
+
+        if (doc.expiresAt.getTime() < Date.now()) {
+            return res.status(400).json({ success: false, message: '코드가 만료되었습니다.' });
+        }
+
+        const attempts = (doc.attempts ?? 0) + 1;
+        if (attempts > 5) {
+            return res.status(429).json({ success: false, message: '시도 횟수 초과' });
+        }
+
+        if (doc.code !== code) {
+            await PhoneVerificationModel.updateOne({ _id: doc._id }, { $set: { attempts } });
+            return res.status(400).json({ success: false, message: '코드가 올바르지 않습니다.' });
+        }
+
+        await PhoneVerificationModel.updateOne(
+            { _id: doc._id },
+            { $set: { verified: true }, $inc: { attempts: 1 } }
+        );
+
+        res.json({ success: true, verified: true });
+    } catch (err) {
+        next(err);
     }
-
-    await sendVerificationSMS(phoneNumber, code);
-    // 보안상 코드 로그 금지
-
-    return res.json({ success: true, message: '인증번호 전송 완료' });
-};
-
-export const verifyCode = async (req: Request, res: Response) => {
-    const parsed = verifySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, error: 'invalid payload' });
-
-    const phoneNumber = parsed.data.phoneNumber.replace(/[^0-9]/g, '');
-    const code = parsed.data.code;
-
-    const doc = await PhoneVerification.findOne({ phoneNumber });
-    if (!doc) return res.status(400).json({ success: false, error: '인증 요청 이력 없음' });
-    if (doc.verified) return res.json({ success: true, verified: true }); // 이미 인증됨
-    if (doc.expiresAt.getTime() < Date.now()) {
-        return res.status(400).json({ success: false, error: '코드 만료' });
-    }
-    if (doc.attempts >= MAX_ATTEMPTS) {
-        return res.status(429).json({ success: false, error: '시도 횟수 초과' });
-    }
-
-    const ok = await bcrypt.compare(code, doc.codeHash);
-    doc.attempts += 1;
-
-    if (!ok) {
-        await doc.save();
-        return res.status(400).json({ success: false, error: '코드 불일치' });
-    }
-
-    doc.verified = true;
-    await doc.save();
-
-    return res.json({ success: true, verified: true });
-};
+}
