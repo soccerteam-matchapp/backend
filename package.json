@@ -4,10 +4,7 @@
 	"main": "dist/index.js",
 	"type": "module",
 	"scripts": {
-		"api-docs": "swagger-cli bundle ./src/swagger/openapi.yaml --outfile src/swagger.yaml --type yaml",
-		"predev": "pnpm run api-docs",
 		"dev": "nodemon src/index.ts",
-		"prebuild": "pnpm run api-docs",
 		"build": "tsc",
 		"start": "node dist/index.js"
 	},
@@ -33,7 +30,6 @@
 		"eslint": "^9.31.0",
 		"globals": "^16.3.0",
 		"nodemon": "^3.1.10",
-		"swagger-cli": "^4.0.4",
 		"swagger-jsdoc": "^6.2.8",
 		"ts-node": "^10.9.2",
 		"ts-node-dev": "^2.0.0",
