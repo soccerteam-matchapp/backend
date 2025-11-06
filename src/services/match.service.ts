@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { Match } from "../models/match.model";
 import { Team } from "../models/team.model";
 import { ForbiddenError, NotFoundError, ConflictError } from "../utils/errors";
+import { createMatchApplyNotification, createMatchAcceptedNotification } from "./notification.service";
 
 export async function createMatchRequest(
     teamId: string,
@@ -64,7 +65,7 @@ export async function applyMatchRequest(
     }
 
     // 이미 신청했는지 확인
-    if (match.participants?.some(p => p.equals(teamId))) {
+    if (match.participants?.some((p: any) => p.team && p.team.equals(team._id))) {
         throw new ConflictError("이미 신청한 매칭입니다.");
     }
 
@@ -79,6 +80,14 @@ export async function applyMatchRequest(
     } as any);
 
     await match.save();
+
+    // 호스트 팀장에게 알림 생성
+    try {
+        await createMatchApplyNotification(matchId, teamId);
+    } catch (err) {
+        // 알림 생성 실패해도 매칭 신청은 성공 처리
+        console.warn('알림 생성 실패:', err);
+    }
 
     return match;
 }
@@ -119,7 +128,7 @@ export async function acceptMatchTeam(matchId: string, userId: string, acceptedT
     }
 
     // 신청 팀 확인
-    if (!match.participants.some(p => p._id.equals(acceptedTeamId))) {
+    if (!match.participants.some((p: any) => p.team && p.team.equals(acceptedTeamId))) {
         throw new ConflictError("해당 팀은 매칭 신청을 하지 않았습니다.");
     }
 
@@ -127,6 +136,14 @@ export async function acceptMatchTeam(matchId: string, userId: string, acceptedT
     match.status = "accepted";
     match.acceptedTeam = new Types.ObjectId(acceptedTeamId);
     await match.save();
+
+    // 게스트 팀장에게 알림 생성
+    try {
+        await createMatchAcceptedNotification(matchId, acceptedTeamId);
+    } catch (err) {
+        // 알림 생성 실패해도 매칭 수락은 성공 처리
+        console.warn('알림 생성 실패:', err);
+    }
 
     return match;
 }

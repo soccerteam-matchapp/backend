@@ -11,6 +11,7 @@ import teamRoutes from './routes/team.routes';
 import matchRoutes from './routes/match.routes';
 import attendancePoll from './routes/attendancePoll.routes';
 import phoneRoutes from './routes/phone.routes';
+import notificationRoutes from './routes/notification.routes';
 import { errorHandler } from './middlewares/error.handler';
 
 // .env (없어도 조용히 통과)
@@ -60,6 +61,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/auth/phone', phoneRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 에러 핸들러 (항상 마지막)
 app.use(errorHandler);
