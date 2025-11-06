@@ -1,11 +1,14 @@
 openapi: 3.0.3
 info:
-  title: Soccer Matching App - Auth API
+  title: Sportly API - Auth API
   version: 1.0.0
   description: |
     로그인/회원가입/토큰 재발급 API. 모든 응답은 { status:number, message:string, data:any|null, error?:string } 포맷을 사용합니다.
 servers:
-  - url: 'http://localhost:3000/api'
+  - url: 'https://{host}'
+    variables:
+      host:
+        default: localhost:3000
 tags:
   - name: Auth
     description: 인증 관련 엔드포인트
