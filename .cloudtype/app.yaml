@@ -24,7 +24,24 @@ options:
     pnpm install --no-frozen-lockfile || { echo "⚠️ 의존성 설치 실패"; exit 1; }
     
     echo "---- Swagger 병합 시작 ----"
+    echo "src/swagger/openapi.yaml 확인:"
+    ls -la src/swagger/openapi.yaml || echo "⚠️ openapi.yaml 없음"
+    echo "src/swagger/routes.yaml 확인:"
+    ls -la src/swagger/routes.yaml || echo "⚠️ routes.yaml 없음"
+    
     pnpm run merge-swagger || { echo "⚠️ Swagger 병합 실패"; exit 1; }
+    
+    echo "---- src/swagger.yaml 생성 확인 ----"
+    if [ -f "src/swagger.yaml" ]; then
+      echo "✅ src/swagger.yaml 생성됨"
+      wc -l src/swagger.yaml || echo "라인 수 확인 실패"
+      grep -c "^  /" src/swagger.yaml || echo "경로 수 확인 실패"
+      echo "---- Notification API 확인 (src) ----"
+      grep -c "/notifications" src/swagger.yaml || echo "⚠️ Notification API 없음"
+    else
+      echo "❌ src/swagger.yaml 생성 실패!"
+      exit 1
+    fi
     
     echo "---- TypeScript 컴파일 시작 ----"
     pnpm exec tsc || { echo "⚠️ TypeScript 컴파일 실패"; exit 1; }
@@ -35,13 +52,21 @@ options:
     echo "---- dist listing ----"
     find dist -maxdepth 2 -type f -print || true
     
-    echo "---- swagger.yaml 확인 ----"
+    echo "---- dist/swagger.yaml 최종 확인 ----"
     if [ -f "dist/swagger.yaml" ]; then
       echo "✅ dist/swagger.yaml 존재"
       wc -l dist/swagger.yaml || echo "라인 수 확인 실패"
       grep -c "^  /" dist/swagger.yaml || echo "경로 수 확인 실패"
-      echo "---- Notification API 확인 ----"
-      grep -c "/notifications" dist/swagger.yaml || echo "Notification API 없음"
+      echo "---- Notification API 최종 확인 ----"
+      NOTIFICATION_COUNT=$(grep -c "/notifications" dist/swagger.yaml || echo "0")
+      if [ "$NOTIFICATION_COUNT" -gt "0" ]; then
+        echo "✅ Notification API 발견: $NOTIFICATION_COUNT개"
+        grep "/notifications" dist/swagger.yaml | head -5
+      else
+        echo "❌ Notification API 없음!"
+        echo "src/swagger.yaml 내용 확인:"
+        grep "/notifications" src/swagger.yaml | head -5 || echo "src에도 없음"
+      fi
     else
       echo "❌ dist/swagger.yaml 없음!"
       echo "src/swagger.yaml 확인:"
