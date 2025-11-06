@@ -17,5 +17,5 @@ jobs:
         with:
           token: ${{ secrets.CLOUDTYPE_TOKEN }}
           project: '@hyewon5617/sportly'   # 대시보드 URL 기준
-          stage: sportly                   # ← 스테이지 이름(네 프로젝트는 'sportly')
+          stage: dev                   # ← 스테이지 이름(네 프로젝트는 'sportly')
           file: .cloudtype/app.yaml
