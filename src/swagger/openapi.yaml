@@ -209,3 +209,59 @@ components:
         guestTeamId: { type: string }
         accept: { type: boolean }
       required: [guestTeamId, accept]
+
+    MatchCreateRequestV2:
+      type: object
+      properties:
+        teamId: { type: string, description: "호스트 팀 _id" }
+        date: { type: string, format: date-time }
+        location: { type: string }
+        players: { type: integer, description: "필요한 인원수" }
+      required: [teamId, date, location, players]
+
+    MatchApplyRequestV2:
+      type: object
+      properties:
+        teamId: { type: string, description: "신청하는 게스트 팀 _id" }
+        matchId: { type: string, description: "매칭 _id" }
+        players: { type: integer, description: "참가 인원수" }
+      required: [teamId, matchId, players]
+
+    MatchAcceptRequest:
+      type: object
+      properties:
+        matchId: { type: string }
+        teamId: { type: string, description: "수락할 게스트 팀 _id" }
+      required: [matchId, teamId]
+
+    TeamRatingRequest:
+      type: object
+      properties:
+        score: { type: number, minimum: 0, maximum: 5, description: "평점 (0~5)" }
+        comment: { type: string, maxLength: 500, description: "댓글 (선택)" }
+      required: [score]
+
+    TeamRatingSummary:
+      type: object
+      properties:
+        averageScore: { type: number, description: "평균 평점" }
+        totalCount: { type: integer, description: "평점 개수" }
+        scoreDistribution: { type: object, description: "점수별 분포" }
+
+    TeamRatingItem:
+      type: object
+      properties:
+        id: { type: string }
+        rater: { type: object, properties: { id: { type: string }, name: { type: string } } }
+        score: { type: number }
+        comment: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, score, createdAt, updatedAt]
+
+    TeamRatingListResponse:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: "#/components/schemas/TeamRatingItem" } }
+        nextCursor: { type: string, nullable: true, description: "다음 페이지 커서" }
+      required: [data]
