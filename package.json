@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "nodemon",
 		"merge-swagger": "node scripts/merge-swagger.js",
-		"prebuild": "npm run merge-swagger",
+		"prebuild": "pnpm run merge-swagger",
 		"build": "tsc",
 		"postbuild": "cpx src/swagger.yaml dist",
 		"start": "node dist/index.js"

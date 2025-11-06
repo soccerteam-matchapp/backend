@@ -8,26 +8,29 @@ options:
     - name: NODE_ENV
       value: production
   install: |
-    set -e
-    # pnpm 보장
+    # pnpm 보장 및 활성화
     if command -v corepack >/dev/null 2>&1; then
       corepack enable
       corepack prepare pnpm@9 --activate || true
     else
-      npm i -g pnpm
+      npm i -g pnpm@9
     fi
-
-    pnpm -v
-    pnpm install --no-frozen-lockfile
+    
+    # pnpm이 제대로 설치되었는지 확인
+    pnpm -v || { echo "❌ pnpm 설치 실패"; exit 1; }
+    
+    # npm을 사용하지 않도록 명시적으로 pnpm 사용
+    echo "---- pnpm으로 의존성 설치 ----"
+    pnpm install --no-frozen-lockfile || { echo "⚠️ 의존성 설치 실패"; exit 1; }
     
     echo "---- Swagger 병합 시작 ----"
-    pnpm run merge-swagger || echo "⚠️ Swagger 병합 실패"
+    pnpm run merge-swagger || { echo "⚠️ Swagger 병합 실패"; exit 1; }
     
     echo "---- TypeScript 컴파일 시작 ----"
-    pnpm exec tsc || echo "⚠️ TypeScript 컴파일 실패"
+    pnpm exec tsc || { echo "⚠️ TypeScript 컴파일 실패"; exit 1; }
     
     echo "---- Swagger 파일 복사 ----"
-    pnpm exec cpx src/swagger.yaml dist || echo "⚠️ Swagger 파일 복사 실패"
+    pnpm exec cpx src/swagger.yaml dist || { echo "⚠️ Swagger 파일 복사 실패"; exit 1; }
     
     echo "---- dist listing ----"
     find dist -maxdepth 2 -type f -print || true
@@ -43,6 +46,7 @@ options:
       echo "❌ dist/swagger.yaml 없음!"
       echo "src/swagger.yaml 확인:"
       ls -la src/swagger.yaml || echo "src/swagger.yaml도 없음"
+      exit 1
     fi
   ports: 3000
   start: node ./dist/index.js
