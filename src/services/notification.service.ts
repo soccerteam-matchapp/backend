@@ -39,8 +39,8 @@ export async function createTeamJoinNotification(teamId: string, requesterUserId
     const requester = await User.findById(requesterUserId).exec();
     if (!requester) throw new Error('사용자를 찾을 수 없습니다.');
 
-    const title = '팀 가입 요청';
-    const message = `${requester.name}님이 ${team.teamName} 팀에 가입을 요청했습니다.`;
+    const title = '가입 요청이 왔어요!';
+    const message = `${requester.name}님의 ${team.teamName} 가입을 승인할까요?`;
 
     return await createNotification(
         String(team.leader._id),
@@ -63,8 +63,8 @@ export async function createMatchApplyNotification(matchId: string, guestTeamId:
     const guestTeam = await Team.findById(guestTeamId).exec();
     if (!guestTeam) throw new Error('팀을 찾을 수 없습니다.');
 
-    const title = '매칭 신청';
-    const message = `${guestTeam.teamName} 팀이 매칭을 신청했습니다.`;
+    const title = '매칭 요청이 왔어요!';
+    const message = `${guestTeam.teamName}과 매칭을 잡을까요?`;
 
     return await createNotification(
         String(match.leader),
@@ -87,8 +87,8 @@ export async function createMatchAcceptedNotification(matchId: string, guestTeam
     if (!guestTeam) throw new Error('팀을 찾을 수 없습니다.');
 
     const hostTeam = match.team as any;
-    const title = '매칭 수락';
-    const message = `${hostTeam.teamName} 팀이 매칭을 수락했습니다.`;
+    const title = '매칭이 성사 됐어요!';
+    const message = `${hostTeam.teamName}과 매칭이 있어요! 참여할까요?`;
 
     return await createNotification(
         String(guestTeam.leader._id),
