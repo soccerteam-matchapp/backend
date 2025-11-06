@@ -19,8 +19,16 @@ options:
 
     pnpm -v
     pnpm install --no-frozen-lockfile
-    pnpm run build
-
+    
+    echo "---- Swagger 병합 시작 ----"
+    pnpm run merge-swagger || echo "⚠️ Swagger 병합 실패"
+    
+    echo "---- TypeScript 컴파일 시작 ----"
+    pnpm exec tsc || echo "⚠️ TypeScript 컴파일 실패"
+    
+    echo "---- Swagger 파일 복사 ----"
+    pnpm exec cpx src/swagger.yaml dist || echo "⚠️ Swagger 파일 복사 실패"
+    
     echo "---- dist listing ----"
     find dist -maxdepth 2 -type f -print || true
     
@@ -29,8 +37,12 @@ options:
       echo "✅ dist/swagger.yaml 존재"
       wc -l dist/swagger.yaml || echo "라인 수 확인 실패"
       grep -c "^  /" dist/swagger.yaml || echo "경로 수 확인 실패"
+      echo "---- Notification API 확인 ----"
+      grep -c "/notifications" dist/swagger.yaml || echo "Notification API 없음"
     else
       echo "❌ dist/swagger.yaml 없음!"
+      echo "src/swagger.yaml 확인:"
+      ls -la src/swagger.yaml || echo "src/swagger.yaml도 없음"
     fi
   ports: 3000
   start: node ./dist/index.js
