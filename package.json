@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"main": "dist/index.js",
 	"scripts": {
-		"dev": "nodemon --watch src/swagger --watch src --ext ts,yaml --exec \"node scripts/merge-swagger.js && ts-node src/index.ts\"",
+		"dev": "nodemon",
 		"merge-swagger": "node scripts/merge-swagger.js",
 		"prebuild": "npm run merge-swagger",
 		"build": "tsc",

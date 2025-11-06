@@ -1,0 +1,7 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["src/swagger.yaml", "dist/**", "node_modules/**"],
+  "exec": "node scripts/merge-swagger.js && ts-node src/index.ts"
+}
+
