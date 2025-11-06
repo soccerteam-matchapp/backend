@@ -18,6 +18,8 @@ tags:
     name: Match
   -
     name: Phone
+  -
+    name: Notification
 components:
   securitySchemes:
     BearerAuth:
@@ -468,6 +470,44 @@ components:
           description: '다음 페이지 커서'
       required:
         - data
+
+    NotificationItem:
+      type: object
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [team_join_request, match_apply, match_accepted]
+        title: { type: string }
+        message: { type: string }
+        read: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        relatedTeam:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            teamName: { type: string }
+        relatedMatch:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            date: { type: string }
+            location: { type: string }
+        relatedUser:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+      required: [id, type, title, message, read, createdAt]
+
+    NotificationCount:
+      type: object
+      properties:
+        count: { type: integer, example: 3 }
+      required: [count]
 paths:
   /auth/register:
     post:
@@ -1287,3 +1327,109 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/ServerError'
+
+  /notifications:
+    get:
+      tags:
+        - Notification
+      summary: '알림 목록 조회'
+      security:
+        -
+          BearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+          description: '가져올 개수'
+        - in: query
+          name: read
+          schema: { type: boolean }
+          description: '읽음 여부 필터(true/false)'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/BaseResponse' }
+                  - { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/NotificationItem' } } } }
+              examples:
+                ok:
+                  value: { status: 200, message: '알림 목록 조회 성공', data: [ { id: '66e1...', type: 'match_apply', title: '매칭 요청이 왔어요!', message: 'FC Tools과 매칭을 잡을까요?', read: false, createdAt: '2025-09-12T10:00:00+09:00', relatedTeam: { id: '66cc...', teamName: 'FC Tools' } } ] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /notifications/unread/count:
+    get:
+      tags:
+        - Notification
+      summary: '읽지 않은 알림 개수'
+      security:
+        -
+          BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/BaseResponse' }
+                  - { type: object, properties: { data: { $ref: '#/components/schemas/NotificationCount' } } }
+              examples:
+                ok:
+                  value: { status: 200, message: '읽지 않은 알림 개수 조회 성공', data: { count: 3 } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  '/notifications/{notificationId}/read':
+    patch:
+      tags:
+        - Notification
+      summary: '알림 읽음 처리'
+      security:
+        -
+          BearerAuth: []
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/BaseResponse' }
+                  - { type: object, properties: { data: { $ref: '#/components/schemas/NotificationItem' } } }
+              examples:
+                ok:
+                  value: { status: 200, message: '알림 읽음 처리 완료', data: { id: '66e1...', type: 'team_join_request', title: '가입 요청이 왔어요!', message: '홍길동님의 FC Tools 가입을 승인할까요?', read: true } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /notifications/read/all:
+    patch:
+      tags:
+        - Notification
+      summary: '모든 알림 읽음 처리'
+      security:
+        -
+          BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/BaseResponse' }
+                  - { type: object, properties: { data: { $ref: '#/components/schemas/NotificationCount' } } }
+              examples:
+                ok:
+                  value: { status: 200, message: '모든 알림 읽음 처리 완료', data: { count: 12 } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
