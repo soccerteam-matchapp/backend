@@ -4,6 +4,8 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"dev": "nodemon --watch src --ext ts --exec \"ts-node src/index.ts\"",
+		"merge-swagger": "node scripts/merge-swagger.js",
+		"prebuild": "npm run merge-swagger",
 		"build": "tsc",
 		"postbuild": "cpx src/swagger.yaml dist",
 		"start": "node dist/index.js"
