@@ -32,15 +32,27 @@ for (const p of candidateSwaggerPaths) {
     try {
         if (p && fs.existsSync(p)) {
             swaggerPath = p;
+            console.log(`✅ Swagger 파일 발견: ${p}`);
             break;
+        } else {
+            console.log(`⚠️  Swagger 파일 없음: ${p}`);
         }
-    } catch { /* ignore */ }
+    } catch (err) {
+        console.warn(`⚠️  Swagger 경로 확인 실패: ${p}`, err);
+    }
 }
 if (swaggerPath) {
-    const swaggerSpec = YAML.load(swaggerPath);
-    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    try {
+        const swaggerSpec = YAML.load(swaggerPath);
+        const pathCount = Object.keys(swaggerSpec.paths || {}).length;
+        console.log(`✅ Swagger 로드 완료: ${pathCount}개 엔드포인트`);
+        app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    } catch (err) {
+        console.error('❌ Swagger 파일 로드 실패:', err);
+    }
 } else {
     console.warn('⚠️ swagger.yaml 파일을 찾지 못해 /api-docs 비활성화');
+    console.warn('   시도한 경로:', candidateSwaggerPaths);
 }
 
 // 라우터

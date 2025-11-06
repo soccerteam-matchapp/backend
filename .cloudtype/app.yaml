@@ -23,5 +23,14 @@ options:
 
     echo "---- dist listing ----"
     find dist -maxdepth 2 -type f -print || true
+    
+    echo "---- swagger.yaml 확인 ----"
+    if [ -f "dist/swagger.yaml" ]; then
+      echo "✅ dist/swagger.yaml 존재"
+      wc -l dist/swagger.yaml || echo "라인 수 확인 실패"
+      grep -c "^  /" dist/swagger.yaml || echo "경로 수 확인 실패"
+    else
+      echo "❌ dist/swagger.yaml 없음!"
+    fi
   ports: 3000
   start: node ./dist/index.js
