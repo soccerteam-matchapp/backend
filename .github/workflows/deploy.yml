@@ -1,3 +1,4 @@
+# CLOUDTYPE_TOKEN secret은 GitHub 리포지토리 Settings > Secrets and variables > Actions에서 설정해야 합니다
 name: Deploy to Cloudtype
 
 on:
