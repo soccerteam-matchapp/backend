@@ -1,0 +1,1098 @@
+/auth/register:
+  post:
+    tags: [Auth]
+    summary: 회원가입
+    description: >
+      회원을 생성합니다. `username`을 보내도 내부에서 `name`으로 매핑되어 처리됩니다.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "./openapi.yaml#/components/schemas/RegisterRequest"
+          examples:
+            default:
+              value: { id: "soccer123", name: "정혜원", password: "secret12" }
+            allowUsernameAlias:
+              value: { id: "soccer123", username: "정혜원", password: "secret12" }
+    responses:
+      "201":
+        description: Created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      nullable: true
+                      example: null
+            examples:
+              created:
+                value: { status: 201, message: "회원가입 성공", data: null }
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "409": { $ref: "./openapi.yaml#/components/responses/Conflict" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+# 로그인
+/auth/login:
+  post:
+    tags: [Auth]
+    summary: 로그인
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "./openapi.yaml#/components/schemas/LoginRequest"
+          examples:
+            default:
+              value: { id: "soccer123", password: "secret12" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "./openapi.yaml#/components/schemas/LoginData"
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "로그인 성공"
+                  data:
+                    accessToken: "eyJhbGciOi..."
+                    refreshToken: "eyJhbGciOi..."
+                    user:
+                      id: "66c7e2d2f3a4f2bb1e8e1b11"
+                      name: "정혜원"
+                      role: "member"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/auth/refresh:
+  post:
+    tags: [Auth]
+    summary: 토큰 재발급
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "./openapi.yaml#/components/schemas/RefreshRequest"
+          examples:
+            default:
+              value: { refreshToken: "eyJhbGciOi..." }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "./openapi.yaml#/components/schemas/TokensData"
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "토큰 재발급 성공"
+                  data:
+                    accessToken: "new-access-token"
+                    refreshToken: "new-refresh-token"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+# =======================
+# Teams
+# =======================
+
+/teams:
+  post:
+    tags: [Team]
+    summary: 팀 만들기(초대코드 발급)
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              teamName:
+                type: string
+            required: [teamName]
+          examples:
+            default:
+              value: { teamName: "FC Tools" }
+    responses:
+      "201":
+        description: Created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id: { type: string, description: "팀 _id" }
+                        teamName: { type: string }
+                        inviteCode: { type: string, description: "6자리 초대코드" }
+                        leader: { type: string, description: "팀장 _id" }
+                        memberNum: { type: integer }
+                        canMatch: { type: boolean, description: "멤버 9명 이상이면 true" }
+                      required: [id, teamName, inviteCode, leader, memberNum, canMatch]
+            examples:
+              created:
+                value:
+                  status: 201
+                  message: "팀 생성 성공"
+                  data:
+                    id: "66cc7a7f0c2e3a1234567890"
+                    teamName: "FC Tools"
+                    inviteCode: "123456"
+                    leader: "66c7e2d2f3a4f2bb1e8e1b11"
+                    memberNum: 1
+                    canMatch: false
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "409": { $ref: "./openapi.yaml#/components/responses/Conflict" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/teams/invite/{code}:
+  get:
+    tags: [Team]
+    summary: 초대코드로 팀 조회
+    description: 초대코드로 팀 기본 정보를 조회합니다.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - in: path
+        name: code
+        required: true
+        schema: { type: string }
+        description: 발급된 6자리 초대코드
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        teamName: { type: string }
+                        inviteCode: { type: string }
+                        memberNum: { type: integer }
+                        canMatch: { type: boolean }
+                      required: [id, teamName, inviteCode, memberNum, canMatch]
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "팀 조회 성공"
+                  data:
+                    id: "66cc7a7f0c2e3a1234567890"
+                    teamName: "FC Tools"
+                    inviteCode: "123456"
+                    memberNum: 1
+                    canMatch: false
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "404": 
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+            examples:
+              notFound:
+                value: { status: 404, message: "해당 초대코드의 팀을 찾을 수 없습니다.", data: null, error: "not_found" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/teams/join:
+  post:
+    tags: [Team]
+    summary: 초대코드로 가입 요청
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              inviteCode:
+                type: string
+            required: [inviteCode]
+          examples:
+            default:
+              value: { inviteCode: "123456" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        teamId: { type: string }
+                        pendingCount: { type: integer }
+                      required: [teamId, pendingCount]
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "가입 요청 접수"
+                  data: { teamId: "66cc7a7f0c2e3a1234567890", pendingCount: 1 }
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "404":
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+            examples:
+              notFound:
+                value: { status: 404, message: "해당 초대코드의 팀을 찾을 수 없습니다.", data: null, error: "not_found" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/teams/{teamId}/requests:
+  get:
+    tags: [Team]
+    summary: 가입 대기 목록(팀장 전용)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - in: path
+        name: teamId
+        required: true
+        schema: { type: string, description: "팀 _id(ObjectId)" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          _id: { type: string }
+                          name: { type: string }
+                          id: { type: string, description: "로그인 아이디(username)" }
+                        required: [_id, name, id]
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "가입 대기 목록"
+                  data:
+                    - { _id: "66c7e2d2f3a4f2bb1e8e1b11", name: "김철수", id: "cs123" }
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+            examples:
+              forbidden:
+                value: { status: 403, message: "팀장만 확인할 수 있습니다.", data: null, error: "forbidden" }
+      "404":
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+            examples:
+              notFound:
+                value: { status: 404, message: "팀을 찾을 수 없습니다.", data: null, error: "not_found" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/teams/{teamId}/requests/decide:
+  post:
+    tags: [Team]
+    summary: 가입 요청 일괄 수락/거절(팀장 전용)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - in: path
+        name: teamId
+        required: true
+        schema: { type: string, description: "팀 _id(ObjectId)" }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              accept:
+                type: array
+                items: { type: string, description: "수락할 사용자 _id" }
+              reject:
+                type: array
+                items: { type: string, description: "거절할 사용자 _id" }
+            required: [accept, reject]
+          examples:
+            acceptSome:
+              value:
+                accept: ["66c7e2d2f3a4f2bb1e8e1b11"]
+                reject: []
+            rejectSome:
+              value:
+                accept: []
+                reject: ["66c7e2d2f3a4f2bb1e8e1b22"]
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        teamId: { type: string }
+                        memberNum: { type: integer }
+                        canMatch: { type: boolean }
+                        accepted: { type: integer }
+                        rejected: { type: integer }
+                        remainingPending: { type: integer }
+                      required: [teamId, memberNum, canMatch, accepted, rejected, remainingPending]
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "처리 완료"
+                  data:
+                    teamId: "66cc7a7f0c2e3a1234567890"
+                    memberNum: 9
+                    canMatch: true
+                    accepted: 1
+                    rejected: 0
+                    remainingPending: 2
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "403":
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+            examples:
+              forbidden:
+                value: { status: 403, message: "팀장만 처리할 수 있습니다.", data: null, error: "forbidden" }
+      "404":
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+            examples:
+              notFound:
+                value: { status: 404, message: "팀을 찾을 수 없습니다.", data: null, error: "not_found" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/teams/{teamId}/ratings:
+  post:
+    tags: [Team]
+    summary: 팀 평점 생성/수정
+    security: [{ BearerAuth: [] }]
+    description: 팀에 대한 평점을 생성하거나 수정합니다. (upsert)
+    parameters:
+      - in: path
+        name: teamId
+        required: true
+        schema: { type: string, description: "팀 _id(ObjectId)" }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "./openapi.yaml#/components/schemas/TeamRatingRequest" }
+          examples:
+            default:
+              value: { score: 4, comment: "매너 좋은 팀입니다!" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        team: { type: string }
+                        rater: { type: string }
+                        score: { type: number }
+                        comment: { type: string, nullable: true }
+                        createdAt: { type: string, format: date-time }
+                        updatedAt: { type: string, format: date-time }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "평점 저장"
+                  data:
+                    id: "66e0..."
+                    team: "66cc..."
+                    rater: "66c7..."
+                    score: 4
+                    comment: "매너 좋은 팀입니다!"
+                    createdAt: "2025-09-12T10:00:00+09:00"
+                    updatedAt: "2025-09-12T10:00:00+09:00"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "404": { $ref: "./openapi.yaml#/components/responses/NotFound" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+  get:
+    tags: [Team]
+    summary: 팀 평점 목록 조회
+    description: 팀에 대한 평점 목록을 커서 기반 페이지네이션으로 조회합니다.
+    parameters:
+      - in: path
+        name: teamId
+        required: true
+        schema: { type: string, description: "팀 _id(ObjectId)" }
+      - in: query
+        name: limit
+        schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
+        description: 조회할 개수
+      - in: query
+        name: cursor
+        schema: { type: string }
+        description: 다음 페이지 커서 (이전 요청의 nextCursor 사용)
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: "./openapi.yaml#/components/schemas/TeamRatingItem" }
+                    nextCursor: { type: string, nullable: true }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "평점 목록"
+                  data:
+                    - id: "66e0..."
+                      rater: { id: "66c7...", name: "정혜원" }
+                      score: 4
+                      comment: "매너 좋은 팀입니다!"
+                      createdAt: "2025-09-12T10:00:00+09:00"
+                      updatedAt: "2025-09-12T10:00:00+09:00"
+                  nextCursor: "66e0..."
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "404": { $ref: "./openapi.yaml#/components/responses/NotFound" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/teams/{teamId}/ratings/summary:
+  get:
+    tags: [Team]
+    summary: 팀 평점 요약 조회
+    description: 팀의 평균 평점, 총 개수, 점수별 분포를 조회합니다.
+    parameters:
+      - in: path
+        name: teamId
+        required: true
+        schema: { type: string, description: "팀 _id(ObjectId)" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data: { $ref: "./openapi.yaml#/components/schemas/TeamRatingSummary" }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "평점 요약"
+                  data:
+                    averageScore: 4.2
+                    totalCount: 15
+                    scoreDistribution: { "5": 5, "4": 8, "3": 2, "2": 0, "1": 0, "0": 0 }
+      "404": { $ref: "./openapi.yaml#/components/responses/NotFound" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/matches:
+  post:
+    tags: [Match]
+    summary: 매칭 생성(호스트 팀장 전용)
+    security: [{ BearerAuth: [] }]
+    description: 호스트 팀의 **팀장**만 생성할 수 있으며, 팀원 11명 이상 조건을 만족해야 합니다.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "./openapi.yaml#/components/schemas/MatchCreateRequestV2" }
+          examples:
+            default:
+              value:
+                teamId: "66cc7a7f0c2e3a1234567890"
+                date: "2025-09-20T10:00:00+09:00"
+                location: "강남구 A구장"
+                players: 11
+    responses:
+      "201":
+        description: Created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        team: { type: string }
+                        leader: { type: string }
+                        date: { type: string }
+                        location: { type: string }
+                        players: { type: integer }
+                        status: { type: string }
+                        createdAt: { type: string, format: date-time }
+                        updatedAt: { type: string, format: date-time }
+            examples:
+              created:
+                value:
+                  status: 201
+                  message: "매칭 요청 생성 성공"
+                  data:
+                    id: "66d0..."
+                    team: "66cc..."
+                    leader: "66c7..."
+                    date: "2025-09-20T10:00:00+09:00"
+                    location: "강남구 A구장"
+                    players: 11
+                    status: "pending"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "403": { $ref: "./openapi.yaml#/components/responses/Forbidden" }
+      "409": { $ref: "./openapi.yaml#/components/responses/Conflict" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/matches/list:
+  get:
+    tags: [Match]
+    summary: 매칭 목록 조회
+    description: 모든 매칭 목록을 최신순으로 조회합니다.
+    security: [{ BearerAuth: [] }]
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id: { type: string }
+                          team: { type: object, properties: { id: { type: string }, teamName: { type: string } } }
+                          leader: { type: object, properties: { id: { type: string }, username: { type: string } } }
+                          date: { type: string }
+                          location: { type: string }
+                          players: { type: integer }
+                          status: { type: string }
+                          createdAt: { type: string, format: date-time }
+                          updatedAt: { type: string, format: date-time }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "매칭 목록 조회 성공"
+                  data:
+                    - id: "66d0..."
+                      team: { id: "66cc...", teamName: "FC Tools" }
+                      leader: { id: "66c7...", username: "soccer123" }
+                      date: "2025-09-20T10:00:00+09:00"
+                      location: "강남구 A구장"
+                      players: 11
+                      status: "pending"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/matches/{matchId}:
+  get:
+    tags: [Match]
+    summary: 매칭 상세 조회
+    parameters:
+      - in: path
+        name: matchId
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data: { $ref: "./openapi.yaml#/components/schemas/Match" }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "상세 조회 성공"
+                  data:
+                    id: "66d0..."
+                    hostTeamId: "66cc..."
+                    place: "강남구 A구장"
+                    date: "2025-09-20T10:00:00+09:00"
+                    isMatched: false
+      "404": { $ref: "./openapi.yaml#/components/responses/NotFound" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/matches/apply:
+  post:
+    tags: [Match]
+    summary: 매칭 신청(게스트 팀장 전용)
+    security: [{ BearerAuth: [] }]
+    description: 게스트 팀 **팀장**만 신청 가능하며, 팀원 11명 이상 조건을 만족해야 합니다.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "./openapi.yaml#/components/schemas/MatchApplyRequestV2" }
+          examples:
+            default:
+              value:
+                teamId: "66cc7a7f0c2e3a1234567890"
+                matchId: "66d0..."
+                players: 11
+    responses:
+      "201":
+        description: Created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        team: { type: string }
+                        matchId: { type: string }
+                        players: { type: integer }
+                      required: [id, team, matchId, players]
+            examples:
+              ok:
+                value:
+                  status: 201
+                  message: "매칭 신청 성공"
+                  data:
+                    id: "66d1..."
+                    team: "66cc..."
+                    matchId: "66d0..."
+                    players: 11
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "403": { $ref: "./openapi.yaml#/components/responses/Forbidden" }
+      "404": { $ref: "./openapi.yaml#/components/responses/NotFound" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/matches/{matchId}/participants:
+  get:
+    tags: [Match]
+    summary: 매칭 참가팀 조회
+    security: [{ BearerAuth: [] }]
+    description: 특정 매칭에 신청한 게스트 팀 목록을 조회합니다.
+    parameters:
+      - in: path
+        name: matchId
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          team: { type: object, properties: { id: { type: string }, teamName: { type: string } } }
+                          players: { type: integer }
+                      required: [team, players]
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "매칭 참가팀 조회 성공"
+                  data:
+                    - team: { id: "66cc...", teamName: "FC Tools" }
+                      players: 11
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "404": { $ref: "./openapi.yaml#/components/responses/NotFound" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/matches/acceptteam:
+  post:
+    tags: [Match]
+    summary: 팀 매칭 수락(호스트 팀장 전용)
+    security: [{ BearerAuth: [] }]
+    description: 호스트 팀장이 게스트 팀의 매칭 신청을 수락합니다.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "./openapi.yaml#/components/schemas/MatchAcceptRequest" }
+          examples:
+            default:
+              value:
+                matchId: "66d0..."
+                teamId: "66cc..."
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        team: { type: string }
+                        acceptedTeam: { type: string }
+                        status: { type: string, example: "accepted" }
+                      required: [id, team, acceptedTeam, status]
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "팀 매칭 수락 완료"
+                  data:
+                    id: "66d0..."
+                    team: "66cc..."
+                    acceptedTeam: "66cc..."
+                    status: "accepted"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "403": { $ref: "./openapi.yaml#/components/responses/Forbidden" }
+      "404": { $ref: "./openapi.yaml#/components/responses/NotFound" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/matches/confirmed:
+  get:
+    tags: [Match]
+    summary: 성사된 매칭 조회
+    security: [{ BearerAuth: [] }]
+    description: 수락되어 확정된 모든 매칭 목록을 조회합니다.
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id: { type: string }
+                          team: { type: object, properties: { id: { type: string }, teamName: { type: string } } }
+                          acceptedTeam: { type: object, properties: { id: { type: string }, teamName: { type: string } } }
+                          date: { type: string }
+                          location: { type: string }
+                          players: { type: integer }
+                          status: { type: string, example: "accepted" }
+                          createdAt: { type: string, format: date-time }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "성사된 매칭 조회 성공"
+                  data:
+                    - id: "66d0..."
+                      team: { id: "66cc...", teamName: "FC Tools" }
+                      acceptedTeam: { id: "66cc...", teamName: "FC Rivals" }
+                      date: "2025-09-20T10:00:00+09:00"
+                      location: "강남구 A구장"
+                      players: 11
+                      status: "accepted"
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/auth/phone/request:
+  post:
+    tags: [Phone]
+    summary: 인증 코드 요청(회원가입 보조)
+    description: 입력한 휴대폰 번호로 6자리 인증 코드를 발송합니다.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "./openapi.yaml#/components/schemas/PhoneRequest" }
+          examples:
+            default:
+              value: { phone: "+821012345678" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      nullable: true
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "인증 코드 발송"
+                  data: null
+                  success: true
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "429":
+        description: Too Many Requests
+        content:
+          application/json:
+            schema: { $ref: "./openapi.yaml#/components/schemas/BaseResponse" }
+            examples:
+              tooMany:
+                value: { status: 429, message: "시도 횟수 초과", data: null, error: "rate_limit" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/auth/phone/verify:
+  post:
+    tags: [Phone]
+    summary: 인증 코드 검증
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "./openapi.yaml#/components/schemas/PhoneVerifyRequest" }
+          examples:
+            default:
+              value: { phone: "+821012345678", code: "123456" }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data: { $ref: "./openapi.yaml#/components/schemas/PhoneVerifyData" }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "인증 완료"
+                  data: { verified: true, expiresAt: null }
+      "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/notifications:
+  get:
+    tags: [Notification]
+    summary: 알림 목록 조회
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - in: query
+        name: limit
+        schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        description: 가져올 개수
+      - in: query
+        name: read
+        schema: { type: boolean }
+        description: 읽음 여부 필터(true/false)
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: "./openapi.yaml#/components/schemas/NotificationItem" }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "알림 목록 조회 성공"
+                  data:
+                    - id: "66e1..."
+                      type: "match_apply"
+                      title: "매칭 요청이 왔어요!"
+                      message: "FC Tools과 매칭을 잡을까요?"
+                      read: false
+                      createdAt: "2025-09-12T10:00:00+09:00"
+                      relatedTeam: { id: "66cc...", teamName: "FC Tools" }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/notifications/unread/count:
+  get:
+    tags: [Notification]
+    summary: 읽지 않은 알림 개수
+    security: [{ BearerAuth: [] }]
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data: { $ref: "./openapi.yaml#/components/schemas/NotificationCount" }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "읽지 않은 알림 개수 조회 성공"
+                  data: { count: 3 }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/notifications/{notificationId}/read:
+  patch:
+    tags: [Notification]
+    summary: 알림 읽음 처리
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - in: path
+        name: notificationId
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data: { $ref: "./openapi.yaml#/components/schemas/NotificationItem" }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "알림 읽음 처리 완료"
+                  data:
+                    id: "66e1..."
+                    type: "team_join_request"
+                    title: "가입 요청이 왔어요!"
+                    message: "홍길동님의 FC Tools 가입을 승인할까요?"
+                    read: true
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
+/notifications/read/all:
+  patch:
+    tags: [Notification]
+    summary: 모든 알림 읽음 처리
+    security: [{ BearerAuth: [] }]
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "./openapi.yaml#/components/schemas/BaseResponse"
+                - type: object
+                  properties:
+                    data: { $ref: "./openapi.yaml#/components/schemas/NotificationCount" }
+            examples:
+              ok:
+                value:
+                  status: 200
+                  message: "모든 알림 읽음 처리 완료"
+                  data: { count: 12 }
+      "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
+      "500": { $ref: "./openapi.yaml#/components/responses/ServerError" }
+
