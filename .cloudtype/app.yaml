@@ -7,6 +7,8 @@ options:
   env:
     - name: NODE_ENV
       value: production
+  build:
+    type: node
   install: |
     # pnpm 보장 및 활성화
     if command -v corepack >/dev/null 2>&1; then
