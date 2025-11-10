@@ -5,25 +5,50 @@ import { Match } from "../models/match.model";
 
 
 export const create = async (req: Request, res: Response) => {
-    const { teamId, date, location, players } = req.body;
-    if (!teamId || !date || !location || !players) {
-        throw new ValidationError("필수 값이 누락되었습니다.");
-    }
+  const {
+    teamId,
+    date,
+    location,
+    players,
+    // ⬇️ 새 필드
+    skill,       // "beginner" | "intermediate" | "advanced"
+    fieldCost,   // number
+    proCount,    // number (optional)
+  } = req.body;
 
-    const match = await createMatchRequest(
-        teamId,
-        (req as any).userId, // 로그인 유저
-        date,
-        location,
-        players,
-    );
+  if (!teamId || !date || !location || !players || !skill || fieldCost === undefined) {
+    throw new ValidationError("필수 값이 누락되었습니다. (teamId, date, location, players, skill, fieldCost)");
+  }
 
-    return res.status(201).json({
-        status: 201,
-        message: "매칭 요청 생성 성공",
-        data: match,
-    });
+  // 가벼운 값 검증 (선택)
+  if (!["beginner", "intermediate", "advanced"].includes(skill)) {
+    throw new ValidationError("skill은 beginner|intermediate|advanced 중 하나여야 합니다.");
+  }
+  if (typeof fieldCost !== "number" || fieldCost < 0) {
+    throw new ValidationError("fieldCost는 0 이상의 숫자여야 합니다.");
+  }
+  if (proCount !== undefined && (typeof proCount !== "number" || proCount < 0)) {
+    throw new ValidationError("proCount는 0 이상의 숫자여야 합니다.");
+  }
+
+  const match = await createMatchRequest(
+    teamId,
+    (req as any).userId,
+    date,
+    location,
+    Number(players),
+    skill,
+    Number(fieldCost),
+    proCount !== undefined ? Number(proCount) : 0
+  );
+
+  return res.status(201).json({
+    status: 201,
+    message: "매칭 요청 생성 성공",
+    data: match,
+  });
 };
+
 
 export const list = async (req: Request, res: Response) => {
     try {
