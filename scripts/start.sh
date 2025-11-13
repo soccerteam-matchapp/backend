@@ -10,31 +10,32 @@ ls -la || true
 if [ ! -f "dist/index.js" ]; then
   echo "⚠️ dist/index.js 없음. 빌드 시작..."
   
-  # pnpm 보장
-  if command -v corepack >/dev/null 2>&1; then
-    corepack enable
-    corepack prepare pnpm@9 --activate || true
+  # pnpm 확인 및 사용 (권한 문제 방지를 위해 npx 사용)
+  if command -v pnpm >/dev/null 2>&1; then
+    PNPM_CMD="pnpm"
+    echo "✅ pnpm 발견: $(which pnpm)"
   else
-    npm i -g pnpm@9
+    PNPM_CMD="npx -y pnpm@9"
+    echo "⚠️ pnpm 없음. npx를 통해 사용"
   fi
   
   # 의존성 설치
   if [ ! -d "node_modules" ]; then
     echo "---- node_modules 없음. 의존성 설치 ----"
-    pnpm install --no-frozen-lockfile || exit 1
+    $PNPM_CMD install --no-frozen-lockfile || exit 1
   fi
   
   # Swagger 병합
   echo "---- Swagger 병합 ----"
-  pnpm run merge-swagger || exit 1
+  $PNPM_CMD run merge-swagger || exit 1
   
   # TypeScript 컴파일
   echo "---- TypeScript 컴파일 ----"
-  pnpm exec tsc || exit 1
+  $PNPM_CMD exec tsc || exit 1
   
   # Swagger 파일 복사
   echo "---- Swagger 파일 복사 ----"
-  pnpm exec cpx src/swagger.yaml dist || exit 1
+  $PNPM_CMD exec cpx src/swagger.yaml dist || exit 1
   
   echo "✅ 빌드 완료"
   echo "dist/index.js 확인:"
