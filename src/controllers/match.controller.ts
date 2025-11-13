@@ -44,7 +44,7 @@ export const create = async (req: Request, res: Response) => {
 
   return res.status(201).json({
     status: 201,
-    message: "매칭 요청 생성 성공",
+    message: "매칭 생성 성공",
     data: match,
   });
 };
