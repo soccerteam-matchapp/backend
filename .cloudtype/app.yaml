@@ -46,6 +46,17 @@ options:
     echo "---- TypeScript 컴파일 시작 ----"
     pnpm exec tsc || { echo "⚠️ TypeScript 컴파일 실패"; exit 1; }
     
+    echo "---- dist/index.js 생성 확인 ----"
+    if [ -f "dist/index.js" ]; then
+      echo "✅ dist/index.js 생성됨"
+      ls -lh dist/index.js
+    else
+      echo "❌ dist/index.js 생성 실패!"
+      echo "dist 폴더 내용:"
+      ls -la dist/ || echo "dist 폴더 없음"
+      exit 1
+    fi
+    
     echo "---- Swagger 파일 복사 ----"
     pnpm exec cpx src/swagger.yaml dist || { echo "⚠️ Swagger 파일 복사 실패"; exit 1; }
     
@@ -74,4 +85,4 @@ options:
       exit 1
     fi
   ports: 3000
-  start: node dist/index.js
+  start: pnpm start
