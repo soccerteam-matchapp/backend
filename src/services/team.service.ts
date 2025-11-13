@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { Team, ITeam } from '../models/team.model';
 import { User } from '../models/user.model';
 import { ValidationError, ForbiddenError, NotFoundError, ConflictError } from '../utils/errors';
+import { createTeamJoinNotification } from './notification.service';
 
 // 6자리 초대코드 생성(유니크 보장 시도)
 async function generateInviteCode(): Promise<string> {
@@ -56,6 +57,14 @@ export async function requestJoin(inviteCode: string, userId: string): Promise<I
 
     team.pending.push(uid);
     await team.save();
+
+    // 팀장에게 알림 생성
+    try {
+        await createTeamJoinNotification(String(team._id), userId);
+    } catch (err) {
+        // 알림 생성 실패해도 가입 요청은 성공 처리
+        console.warn('알림 생성 실패:', err);
+    }
 
     return team;
 }

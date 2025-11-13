@@ -1,29 +1,54 @@
 import { Request, Response } from "express";
-import { createMatchRequest, applyMatchRequest } from "../services/match.service";
+import { createMatchRequest, applyMatchRequest, getAppliedTeams, acceptMatchTeam, getConfirmedMatches } from "../services/match.service";
 import { ValidationError, NotFoundError } from "../utils/errors";
 import { Match } from "../models/match.model";
 
 
 export const create = async (req: Request, res: Response) => {
-    const { teamId, date, location, players } = req.body;
-    if (!teamId || !date || !location || !players) {
-        throw new ValidationError("필수 값이 누락되었습니다.");
-    }
+  const {
+    teamId,
+    date,
+    location,
+    players,
+    // ⬇️ 새 필드
+    skill,       // "beginner" | "intermediate" | "advanced"
+    fieldCost,   // number
+    proCount,    // number (optional)
+  } = req.body;
 
-    const match = await createMatchRequest(
-        teamId,
-        (req as any).userId, // 로그인 유저
-        date,
-        location,
-        players,
-    );
+  if (!teamId || !date || !location || !players || !skill || fieldCost === undefined) {
+    throw new ValidationError("필수 값이 누락되었습니다. (teamId, date, location, players, skill, fieldCost)");
+  }
 
-    return res.status(201).json({
-        status: 201,
-        message: "매칭 요청 생성 성공",
-        data: match,
-    });
+  // 가벼운 값 검증 (선택)
+  if (!["beginner", "intermediate", "advanced"].includes(skill)) {
+    throw new ValidationError("skill은 beginner|intermediate|advanced 중 하나여야 합니다.");
+  }
+  if (typeof fieldCost !== "number" || fieldCost < 0) {
+    throw new ValidationError("fieldCost는 0 이상의 숫자여야 합니다.");
+  }
+  if (proCount !== undefined && (typeof proCount !== "number" || proCount < 0)) {
+    throw new ValidationError("proCount는 0 이상의 숫자여야 합니다.");
+  }
+
+  const match = await createMatchRequest(
+    teamId,
+    (req as any).userId,
+    date,
+    location,
+    Number(players),
+    skill,
+    Number(fieldCost),
+    proCount !== undefined ? Number(proCount) : 0
+  );
+
+  return res.status(201).json({
+    status: 201,
+    message: "매칭 요청 생성 성공",
+    data: match,
+  });
 };
+
 
 export const list = async (req: Request, res: Response) => {
     try {
@@ -49,20 +74,62 @@ export const list = async (req: Request, res: Response) => {
 };
 
 export const apply = async (req: Request, res: Response) => {
-    const { teamId, matchId } = req.body;
-    if (!teamId || !matchId) {
+    const { teamId, matchId, players } = req.body;
+    if (!teamId || !matchId || !players) {
         throw new ValidationError("필수 값이 누락되었습니다.");
     }
 
     const match = await applyMatchRequest(
         teamId,
         (req as any).userId,
-        matchId
+        matchId,
+        players
     );
 
     return res.status(201).json({
         status: 201,
         message: "매칭 신청 성공",
         data: match,
+    });
+};
+
+
+export const participants = async (req: Request, res: Response) => {
+    const { matchId } = req.params;
+    if (!matchId) {
+        throw new ValidationError("matchId가 필요합니다.");
+    }
+
+    const participants = await getAppliedTeams(matchId, (req as any).userId);
+
+    return res.status(200).json({
+        status: 200,
+        message: "매칭 참가팀 조회 성공",
+        data: participants,
+    });
+};
+
+export const acceptTeam = async (req: Request, res: Response) => {
+    const { matchId, teamId } = req.body;
+    if (!matchId || !teamId) {
+        throw new ValidationError("matchId와 teamId가 필요합니다.");
+    }
+
+    const match = await acceptMatchTeam(matchId, (req as any).userId, teamId);
+
+    return res.status(200).json({
+        status: 200,
+        message: "팀 매칭 수락 완료",
+        data: match,
+    });
+};
+
+export const confirmed = async (req: Request, res: Response) => {
+    const matches = await getConfirmedMatches();
+
+    return res.status(200).json({
+        status: 200,
+        message: "성사된 매칭 조회 성공",
+        data: matches,
     });
 };

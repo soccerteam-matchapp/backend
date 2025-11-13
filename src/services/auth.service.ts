@@ -1,6 +1,6 @@
 // src/services/auth.service.ts
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { User, IUser } from '../models/user.model';
 import { ValidationError, AuthError } from '../utils/errors';
 

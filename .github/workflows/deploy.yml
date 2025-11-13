@@ -1,0 +1,22 @@
+# CLOUDTYPE_TOKEN secret은 GitHub 리포지토리 Settings > Secrets and variables > Actions에서 설정해야 합니다
+name: Deploy to Cloudtype
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Cloudtype
+        uses: cloudtype-github-actions/deploy@v1
+        with:
+          token: ${{ secrets.CLOUDTYPE_TOKEN }}
+          project: '@hyewon5617/sportly'   # 대시보드 URL 기준
+          # stage를 제거하면 기본 stage를 사용합니다
+          file: .cloudtype/app.yaml
