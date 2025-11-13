@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
+import cors from 'cors';
 
 import authRoutes from './routes/auth.routes';
 import teamRoutes from './routes/team.routes';
@@ -19,6 +20,16 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
 
 const app = express();
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim());
+
+app.use(
+    cors({
+        origin: allowedOrigins,
+        credentials: true, // 쿠키/Authorization 헤더 쓰면 true
+    }),
+);
 app.use(express.json());
 
 // Swagger: dist/swagger.yaml → 없으면 src/swagger.yaml → 환경변수 지정
@@ -62,6 +73,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/auth/phone', phoneRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/attendance-polls', attendancePoll);
 
 // 에러 핸들러 (항상 마지막)
 app.use(errorHandler);
