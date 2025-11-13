@@ -1,5 +1,5 @@
 name: sportly
-app: node@18
+app: node@20
 options:
   git:
     url: https://github.com/soccerteam-matchapp/backend.git
@@ -60,8 +60,14 @@ options:
     echo "---- Swagger 파일 복사 ----"
     pnpm exec cpx src/swagger.yaml dist || { echo "⚠️ Swagger 파일 복사 실패"; exit 1; }
     
-    echo "---- dist listing ----"
-    find dist -maxdepth 2 -type f -print || true
+    echo "---- dist 전체 구조 확인 ----"
+    echo "dist 폴더 전체 내용:"
+    ls -la dist/ || echo "dist 폴더 없음"
+    echo "dist/index.js 절대 경로 확인:"
+    pwd
+    ls -la dist/index.js || echo "dist/index.js 없음"
+    echo "dist 폴더의 모든 파일:"
+    find dist -type f -print || true
     
     echo "---- dist/swagger.yaml 최종 확인 ----"
     if [ -f "dist/swagger.yaml" ]; then
