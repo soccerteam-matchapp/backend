@@ -3,6 +3,8 @@ import { Match } from "../models/match.model";
 import { Team } from "../models/team.model";
 import { ForbiddenError, NotFoundError, ConflictError } from "../utils/errors";
 import { createMatchApplyNotification, createMatchAcceptedNotification } from "./notification.service";
+import { AttendancePoll } from "../models/attendancePoll.model";
+
 
 export async function createMatchRequest(
   teamId: string,
@@ -46,60 +48,66 @@ export async function createMatchRequest(
 
 
 export async function applyMatchRequest(
-    teamId: string,
-    leaderId: string,
-    matchId: string, // 신청할 매칭 ID
-    players: number
+  teamId: string,
+  leaderId: string,
+  matchId: string, // 신청할 매칭 ID
+  players: number
 ) {
-    const team = await Team.findById(teamId);
-    if (!team) throw new NotFoundError("팀을 찾을 수 없습니다.");
+  const team = await Team.findById(teamId);
+  if (!team) throw new NotFoundError("팀을 찾을 수 없습니다.");
 
-    // 팀장 권한 확인
-    if (!team.leader.equals(new Types.ObjectId(leaderId))) {
-        throw new ForbiddenError("팀장만 매칭을 신청할 수 있습니다.");
-    }
+  // 팀장 권한 확인
+  if (!team.leader.equals(new Types.ObjectId(leaderId))) {
+    throw new ForbiddenError("팀장만 매칭을 신청할 수 있습니다.");
+  }
 
-    // 매칭 가능 여부 확인
-    if (!team.canMatch) {
-        throw new ForbiddenError("팀원 수가 부족하여 매칭을 신청할 수 없습니다. (최소 9명 필요)");
-    }
+  // ✅ 출석 투표 기반 매칭 가능 여부 확인 (yes 11명 이상)
+  const latestPoll = await AttendancePoll.findOne({ team: team._id })
+    .sort({ createdAt: -1 })  // 가장 최근 투표
+    .exec();
 
-    // 매칭 조회
-    const match = await Match.findById(matchId);
-    if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
+  if (!latestPoll || !latestPoll.canMatch) {
+    throw new ForbiddenError(
+      "출석 투표에서 경기 가능 인원이 부족하여 매칭을 신청할 수 없습니다. (yes 11명 이상 필요)"
+    );
+  }
 
-    // 자기 팀 매칭 신청 방지
-    if (match.team.equals(teamId)) {
-        throw new ForbiddenError("자기 팀 매칭에는 신청할 수 없습니다.");
-    }
+  // 매칭 조회
+  const match = await Match.findById(matchId);
+  if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
 
-    // 이미 신청했는지 확인
-    if (match.participants?.some((p: any) => p.team && p.team.equals(team._id))) {
-        throw new ConflictError("이미 신청한 매칭입니다.");
-    }
+  // 자기 팀 매칭 신청 방지
+  if (match.team.equals(teamId)) {
+    throw new ForbiddenError("자기 팀 매칭에는 신청할 수 없습니다.");
+  }
 
-    // 신청 추가
-    if (!match.participants) {
-        match.participants = [];
-    }
+  // 이미 신청했는지 확인
+  if (match.participants?.some((p: any) => p.team && p.team.equals(team._id))) {
+    throw new ConflictError("이미 신청한 매칭입니다.");
+  }
 
-    match.participants.push({
-        team: team._id as Types.ObjectId,
-        players
-    } as any);
+  // 신청 추가
+  if (!match.participants) {
+    match.participants = [];
+  }
 
-    await match.save();
+  match.participants.push({
+    team: team._id as Types.ObjectId,
+    players,
+  } as any);
 
-    // 호스트 팀장에게 알림 생성
-    try {
-        await createMatchApplyNotification(matchId, teamId);
-    } catch (err) { 
-        // 알림 생성 실패해도 매칭 신청은 성공 처리
-        console.warn('알림 생성 실패:', err);
-    }
+  await match.save();
 
-    return match;
+  // 호스트 팀장에게 알림 생성
+  try {
+    await createMatchApplyNotification(matchId, teamId);
+  } catch (err) {
+    console.warn("알림 생성 실패:", err);
+  }
+
+  return match;
 }
+
 
 export async function getAppliedTeams(matchId: string, userId: string) {
   const match = await Match.findById(matchId)
