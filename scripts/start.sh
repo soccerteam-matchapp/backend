@@ -19,23 +19,24 @@ if [ ! -f "dist/index.js" ]; then
     echo "⚠️ pnpm 없음. npx를 통해 사용"
   fi
   
-  # 의존성 설치
+  # 의존성 설치 (devDependencies 포함)
   if [ ! -d "node_modules" ]; then
-    echo "---- node_modules 없음. 의존성 설치 ----"
-    $PNPM_CMD install --no-frozen-lockfile || exit 1
+    echo "---- node_modules 없음. 의존성 설치 (devDependencies 포함) ----"
+    # NODE_ENV를 임시로 변경하여 devDependencies도 설치
+    NODE_ENV=development $PNPM_CMD install --no-frozen-lockfile || exit 1
   fi
   
   # Swagger 병합
   echo "---- Swagger 병합 ----"
   $PNPM_CMD run merge-swagger || exit 1
   
-  # TypeScript 컴파일
+  # TypeScript 컴파일 (npx 사용하여 로컬에 없어도 자동 다운로드)
   echo "---- TypeScript 컴파일 ----"
-  $PNPM_CMD exec tsc || exit 1
+  npx -y typescript@^5.8.3 tsc || exit 1
   
-  # Swagger 파일 복사
+  # Swagger 파일 복사 (npx 사용)
   echo "---- Swagger 파일 복사 ----"
-  $PNPM_CMD exec cpx src/swagger.yaml dist || exit 1
+  npx -y cpx@^1.5.0 src/swagger.yaml dist || exit 1
   
   echo "✅ 빌드 완료"
   echo "dist/index.js 확인:"
