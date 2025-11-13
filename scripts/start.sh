@@ -30,13 +30,27 @@ if [ ! -f "dist/index.js" ]; then
   echo "---- Swagger 병합 ----"
   $PNPM_CMD run merge-swagger || exit 1
   
-  # TypeScript 컴파일 (npx 사용하여 로컬에 없어도 자동 다운로드)
+  # TypeScript 컴파일 (로컬에 설치된 tsc 사용)
   echo "---- TypeScript 컴파일 ----"
-  npx -y typescript@^5.8.3 tsc || exit 1
+  if [ -f "node_modules/.bin/tsc" ]; then
+    ./node_modules/.bin/tsc || exit 1
+  elif command -v tsc >/dev/null 2>&1; then
+    tsc || exit 1
+  else
+    echo "❌ tsc를 찾을 수 없습니다. typescript가 설치되었는지 확인하세요."
+    exit 1
+  fi
   
-  # Swagger 파일 복사 (npx 사용)
+  # Swagger 파일 복사 (로컬에 설치된 cpx 사용)
   echo "---- Swagger 파일 복사 ----"
-  npx -y cpx@^1.5.0 src/swagger.yaml dist || exit 1
+  if [ -f "node_modules/.bin/cpx" ]; then
+    ./node_modules/.bin/cpx src/swagger.yaml dist || exit 1
+  elif command -v cpx >/dev/null 2>&1; then
+    cpx src/swagger.yaml dist || exit 1
+  else
+    echo "❌ cpx를 찾을 수 없습니다. cpx가 설치되었는지 확인하세요."
+    exit 1
+  fi
   
   echo "✅ 빌드 완료"
   echo "dist/index.js 확인:"
