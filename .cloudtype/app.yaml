@@ -7,6 +7,10 @@ options:
   env:
     - name: NODE_ENV
       value: production
+    - name: MONGO_URI
+      value: ""  # Cloudtype 대시보드에서 실제 MongoDB URI로 설정 필요
+    - name: JWT_SECRET
+      value: ""  # Cloudtype 대시보드에서 실제 JWT 시크릿으로 설정 필요
   install: |
     # pnpm 보장 및 활성화
     if command -v corepack >/dev/null 2>&1; then
