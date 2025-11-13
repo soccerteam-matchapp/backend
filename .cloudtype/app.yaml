@@ -43,8 +43,9 @@ options:
       exit 1
     fi
     
-    echo "---- TypeScript 컴파일 시작 ----"
-    pnpm exec tsc || { echo "⚠️ TypeScript 컴파일 실패"; exit 1; }
+    echo "---- TypeScript 컴파일 시작 (메모리 제한: 4GB) ----"
+    export NODE_OPTIONS="--max-old-space-size=4096"
+    NODE_OPTIONS="--max-old-space-size=4096" pnpm exec tsc || { echo "⚠️ TypeScript 컴파일 실패"; exit 1; }
     
     echo "---- dist/index.js 생성 확인 ----"
     if [ -f "dist/index.js" ]; then

@@ -30,12 +30,13 @@ if [ ! -f "dist/index.js" ]; then
   echo "---- Swagger 병합 ----"
   $PNPM_CMD run merge-swagger || exit 1
   
-  # TypeScript 컴파일 (로컬에 설치된 tsc 사용)
-  echo "---- TypeScript 컴파일 ----"
+  # TypeScript 컴파일 (로컬에 설치된 tsc 사용, 메모리 제한 증가)
+  echo "---- TypeScript 컴파일 (메모리 제한: 4GB) ----"
+  export NODE_OPTIONS="--max-old-space-size=4096"
   if [ -f "node_modules/.bin/tsc" ]; then
-    ./node_modules/.bin/tsc || exit 1
+    node --max-old-space-size=4096 ./node_modules/.bin/tsc || exit 1
   elif command -v tsc >/dev/null 2>&1; then
-    tsc || exit 1
+    node --max-old-space-size=4096 $(which tsc) || exit 1
   else
     echo "❌ tsc를 찾을 수 없습니다. typescript가 설치되었는지 확인하세요."
     exit 1
