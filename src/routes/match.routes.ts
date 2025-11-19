@@ -2,7 +2,7 @@ import { Router } from "express";
 import { asyncHandler, requireAuth, requireLeader } from "../middlewares/auth";
 import { validateDto } from "../middlewares/validation.middleware";
 import { CreateMatchDto, ApplyToMatchDto, AcceptMatchTeamDto } from "../dto/match.dto";
-import { createMatch, getMatches, applyToMatch, getMatchParticipants, acceptMatchTeam, getConfirmedMatches } from "../controllers/match.controller";
+import { createMatch, getMatches, applyToMatch, getMatchParticipants, acceptMatchTeam, getConfirmedMatches } from "../controllers/match";
 
 const router = Router();
 

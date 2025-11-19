@@ -3,7 +3,7 @@ import { asyncHandler, requireAuth, requireLeader } from '../middlewares/auth';
 import { validateDto } from '../middlewares/validation.middleware';
 import { CreateTeamDto, JoinTeamByInviteCodeDto, DecideJoinRequestDto } from '../dto/team.dto';
 import { RateTeamDto } from '../dto/rating.dto';
-import { createTeam, getTeamByInviteCode, joinTeamByInviteCode, getPendingRequests, decideJoinRequest } from '../controllers/team.controller';
+import { createTeam, getTeamByInviteCode, joinTeamByInviteCode, getPendingRequests, decideJoinRequest } from '../controllers/team';
 import { rateTeam, getRatingSummary, getRatingList } from '../controllers/rating.controller';
 
 
