@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional, ArrayMinSize, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsOptional, ArrayMinSize, MinLength, IsEnum } from 'class-validator';
 
 /** 팀 생성 요청 DTO */
 export class CreateTeamDto {
@@ -15,16 +15,16 @@ export class JoinTeamByInviteCodeDto {
     inviteCode!: string;
 }
 
-/** 가입 요청 결정 DTO */
-export class DecideJoinRequestsDto {
-    @IsArray({ message: 'accept는 배열이어야 합니다.' })
-    @IsOptional()
-    @IsString({ each: true, message: 'accept 배열의 각 요소는 문자열이어야 합니다.' })
-    accept?: string[];
+/** 가입 요청 결정 DTO (단일 처리) */
+export class DecideJoinRequestDto {
+    @IsString({ message: 'userId는 문자열이어야 합니다.' })
+    @IsNotEmpty({ message: 'userId가 필요합니다.' })
+    userId!: string;
 
-    @IsArray({ message: 'reject는 배열이어야 합니다.' })
-    @IsOptional()
-    @IsString({ each: true, message: 'reject 배열의 각 요소는 문자열이어야 합니다.' })
-    reject?: string[];
+    @IsEnum(['accept', 'reject'], {
+        message: 'action은 accept 또는 reject여야 합니다.',
+    })
+    @IsNotEmpty({ message: 'action이 필요합니다.' })
+    action!: 'accept' | 'reject';
 }
 

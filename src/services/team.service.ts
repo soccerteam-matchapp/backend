@@ -79,46 +79,51 @@ export async function findPendingRequests(teamId: string, leaderId: string) {
     return team.pending;
 }
 
-/** 리더만: 일괄 수락/거절 */
-export async function processJoinRequests(teamId: string, leaderId: string, acceptIds: string[], rejectIds: string[]) {
+/** 리더만: 단일 가입 요청 수락/거절 */
+export async function processJoinRequest(teamId: string, leaderId: string, userId: string, action: 'accept' | 'reject') {
     const team = await Team.findById(teamId).exec();
     if (!team) throw new NotFoundError('팀을 찾을 수 없습니다.');
     if (!team.leader.equals(new Types.ObjectId(leaderId))) {
         throw new ForbiddenError('팀장만 처리할 수 있습니다.');
     }
 
-    const acceptSet = new Set(acceptIds || []);
-    const rejectSet = new Set(rejectIds || []);
+    const userIdObj = new Types.ObjectId(userId);
 
-    // pending에 존재하는 대상만 필터
-    const pendings = team.pending.map(String);
-    const accepts = pendings.filter((u) => acceptSet.has(u));
-    const rejects = pendings.filter((u) => rejectSet.has(u));
-
-    // 팀 업데이트
-    if (accepts.length) {
-        team.members = Array.from(new Set([...team.members.map(String), ...accepts])).map((id) => new Types.ObjectId(id));
-        team.pending = team.pending.filter((u) => !acceptSet.has(String(u)));
+    // pending에 존재하는지 확인
+    const isPending = team.pending.some((u) => u.equals(userIdObj));
+    if (!isPending) {
+        throw new NotFoundError('해당 사용자의 가입 요청을 찾을 수 없습니다.');
     }
-    if (rejects.length) {
-        team.pending = team.pending.filter((u) => !rejectSet.has(String(u)));
-    }
-    await team.save();
 
-    // 수락된 유저 문서 업데이트(소속팀 추가)
-    if (accepts.length) {
-        await User.updateMany(
-            { _id: { $in: accepts } },
+    // action에 따라 처리
+    if (action === 'accept') {
+        // 멤버에 추가 (중복 방지)
+        const isMember = team.members.some((m) => m.equals(userIdObj));
+        if (!isMember) {
+            team.members.push(userIdObj);
+        }
+
+        // pending에서 제거
+        team.pending = team.pending.filter((u) => !u.equals(userIdObj));
+
+        // 유저 문서 업데이트(소속팀 추가)
+        await User.findByIdAndUpdate(
+            userIdObj,
             { $addToSet: { belonging: team._id } }
         ).exec();
+    } else {
+        // pending에서 제거 (거절)
+        team.pending = team.pending.filter((u) => !u.equals(userIdObj));
     }
+
+    await team.save();
 
     return {
         teamId: String(team._id),
+        userId,
+        action,
         memberNum: team.members.length,
         canMatch: team.members.length >= 9,
-        accepted: accepts.length,
-        rejected: rejects.length,
         remainingPending: team.pending.length,
     };
 }
