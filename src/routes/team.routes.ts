@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler, requireAuth, requireLeader } from '../middlewares/auth';
 import { validateDto } from '../middlewares/validation.middleware';
 import { CreateTeamDto, JoinTeamByInviteCodeDto, DecideJoinRequestDto } from '../dto/team.dto';
+import { RateTeamDto } from '../dto/rating.dto';
 import { createTeam, getTeamByInviteCode, joinTeamByInviteCode, getPendingRequests, decideJoinRequest } from '../controllers/team.controller';
 import { rateTeam, getRatingSummary, getRatingList } from '../controllers/rating.controller';
 
@@ -25,7 +26,7 @@ router.get('/:teamId/requests', requireLeader, asyncHandler(getPendingRequests))
 router.post('/:teamId/requests/decide', requireLeader, validateDto(DecideJoinRequestDto), asyncHandler(decideJoinRequest));
 
 // 팀 평점 API
-router.post('/:teamId/ratings', asyncHandler(rateTeam));            // 생성/수정(upsert)
+router.post('/:teamId/ratings', validateDto(RateTeamDto), asyncHandler(rateTeam));            // 생성/수정(upsert)
 router.get('/:teamId/ratings/summary', asyncHandler(getRatingSummary));
 router.get('/:teamId/ratings', asyncHandler(getRatingList));
 

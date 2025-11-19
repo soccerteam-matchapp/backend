@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthenticatedRequest } from '../middlewares/auth';
 import {
     getUserNotifications,
     getUnreadCount,
@@ -10,8 +11,9 @@ import { ValidationError } from '../utils/errors';
 /**
  * 알림 목록 조회
  */
-export const getNotifications = async (req: Request, res: Response) => {
-    const userId = (req as any).userId;
+export const getNotifications = async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.userId) throw new ValidationError('인증이 필요합니다.');
+    const userId = req.userId;
     const limit = req.query.limit ? Number(req.query.limit) : 20;
     const read = req.query.read === 'true' ? true : req.query.read === 'false' ? false : undefined;
 
@@ -50,8 +52,9 @@ export const getNotifications = async (req: Request, res: Response) => {
 /**
  * 읽지 않은 알림 개수 조회
  */
-export const getUnreadNotificationCount = async (req: Request, res: Response) => {
-    const userId = (req as any).userId;
+export const getUnreadNotificationCount = async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.userId) throw new ValidationError('인증이 필요합니다.');
+    const userId = req.userId;
     const count = await getUnreadCount(userId);
 
     return res.status(200).json({
@@ -64,8 +67,9 @@ export const getUnreadNotificationCount = async (req: Request, res: Response) =>
 /**
  * 알림 읽음 처리
  */
-export const markNotificationAsRead = async (req: Request, res: Response) => {
-    const userId = (req as any).userId;
+export const markNotificationAsRead = async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.userId) throw new ValidationError('인증이 필요합니다.');
+    const userId = req.userId;
     const { notificationId } = req.params;
 
     if (!notificationId) {
@@ -84,8 +88,9 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
 /**
  * 모든 알림 읽음 처리
  */
-export const markAllNotificationsAsRead = async (req: Request, res: Response) => {
-    const userId = (req as any).userId;
+export const markAllNotificationsAsRead = async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.userId) throw new ValidationError('인증이 필요합니다.');
+    const userId = req.userId;
     const count = await markAllAsRead(userId);
 
     return res.status(200).json({
