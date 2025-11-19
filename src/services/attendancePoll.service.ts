@@ -1,23 +1,54 @@
 import { Types } from "mongoose";
 import { AttendancePoll } from "../models/attendancePoll.model";
-import { NotFoundError } from "../utils/errors";
+import { Team } from "../models/team.model";
+import { Match } from "../models/match.model";
+import { NotFoundError, ForbiddenError, ConflictError } from "../utils/errors";
+
 
 // 투표 생성 (팀장 전용)
+// 투표 생성 (팀장 전용, 특정 매치 기준)
 export async function createPoll(
-  teamId: string, 
-  leaderId: string, 
-  question: string, 
+  teamId: string,
+  leaderId: string,
+  matchId: string,
+  question: string,
   expiresAt?: Date
 ) {
+  // 팀 조회
+  const team = await Team.findById(teamId).exec();
+  if (!team) throw new NotFoundError("팀을 찾을 수 없습니다.");
+
+  // 팀장 권한 확인
+  if (!team.leader.equals(new Types.ObjectId(leaderId))) {
+    throw new ForbiddenError("팀장만 출석 투표를 생성할 수 있습니다.");
+  }
+
+  // 매치 존재 여부 확인
+  const match = await Match.findById(matchId).exec();
+  if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
+
+  // 이미 이 매치에 대한 출석 투표가 있으면 막기 (선택)
+  const existing = await AttendancePoll.findOne({
+    team: team._id,
+    match: match._id,
+  }).exec();
+
+  if (existing) {
+    throw new ConflictError("이미 이 매치에 대한 출석 투표가 존재합니다.");
+  }
+
   const poll = await AttendancePoll.create({
-    team: new Types.ObjectId(teamId),
+    team: team._id,
+    match: match._id,
     leader: new Types.ObjectId(leaderId),
     question,
     expiresAt,
-    // canMatch는 스키마 default(false) 사용
+    // canMatch는 default(false)
   });
+
   return poll;
 }
+
 
 // 투표하기
 export async function votePoll(
