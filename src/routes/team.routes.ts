@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler, requireAuth } from '../middlewares/auth';
+import { asyncHandler, requireAuth, requireLeader } from '../middlewares/auth';
 import { create, findByInvite, joinByInvite, getPending, decide } from '../controllers/team.controller';
 import { rateTeam, getRatingSummary, getRatingList } from '../controllers/rating.controller';
 
@@ -19,8 +19,8 @@ router.get('/invite/:code', asyncHandler(findByInvite));
 router.post('/join', asyncHandler(joinByInvite));
 
 // 팀장만: 대기중 요청 조회/일괄 결정
-router.get('/:teamId/requests', asyncHandler(getPending));
-router.post('/:teamId/requests/decide', asyncHandler(decide));
+router.get('/:teamId/requests', requireLeader, asyncHandler(getPending));
+router.post('/:teamId/requests/decide', requireLeader, asyncHandler(decide));
 
 // 팀 평점 API
 router.post('/:teamId/ratings', asyncHandler(rateTeam));            // 생성/수정(upsert)
