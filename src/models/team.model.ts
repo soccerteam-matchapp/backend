@@ -31,7 +31,7 @@ TeamSchema.virtual('memberNum').get(function (this: ITeam) {
     return this.members?.length ?? 0;
 });
 TeamSchema.virtual('canMatch').get(function (this: ITeam) {
-    return (this.members?.length ?? 0) >= 9;
+    return (this.members?.length ?? 0) >= 11;
 });
 // 평균 평점
 TeamSchema.virtual('ratingAvg').get(function (this: ITeam) {

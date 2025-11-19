@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createAttendancePoll, voteAttendancePoll, getAttendancePollResults } from "../controllers/attendancePoll.controller";
-import { asyncHandler, requireAuth } from '../middlewares/auth';
+import { asyncHandler} from '../middlewares/auth';
 
 const router = Router();
 

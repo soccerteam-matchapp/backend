@@ -116,7 +116,7 @@ export async function decideJoin(teamId: string, leaderId: string, acceptIds: st
     return {
         teamId: String(team._id),
         memberNum: team.members.length,
-        canMatch: team.members.length >= 9,
+        canMatch: team.members.length >= 11,
         accepted: accepts.length,
         rejected: rejects.length,
         remainingPending: team.pending.length,

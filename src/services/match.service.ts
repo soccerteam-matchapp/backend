@@ -27,7 +27,7 @@ export async function createMatchRequest(
 
   // 매칭 가능 여부 확인
   if (!team.canMatch) {
-    throw new ForbiddenError("팀원 수가 부족하여 매칭을 신청할 수 없습니다. (최소 9명 필요)");
+    throw new ForbiddenError("팀원 수가 부족하여 매칭을 신청할 수 없습니다. (최소 11명 필요)");
   }
 
   const match = await Match.create({
@@ -61,32 +61,34 @@ export async function applyMatchRequest(
     throw new ForbiddenError("팀장만 매칭을 신청할 수 있습니다.");
   }
 
-  // ✅ 출석 투표 기반 매칭 가능 여부 확인 (yes 11명 이상)
-  const latestPoll = await AttendancePoll.findOne({ team: team._id })
-    .sort({ createdAt: -1 })  // 가장 최근 투표
-    .exec();
-
-  if (!latestPoll || !latestPoll.canMatch) {
-    throw new ForbiddenError(
-      "출석 투표에서 경기 가능 인원이 부족하여 매칭을 신청할 수 없습니다. (yes 11명 이상 필요)"
-    );
-  }
-
-  // 매칭 조회
+  // 1. 매칭 조회
   const match = await Match.findById(matchId);
   if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
 
-  // 자기 팀 매칭 신청 방지
+  // 2. 자기 팀 매칭 신청 방지
   if (match.team.equals(teamId)) {
     throw new ForbiddenError("자기 팀 매칭에는 신청할 수 없습니다.");
   }
 
-  // 이미 신청했는지 확인
+
+  // 3. ✅ 이 매치에 대한 출석 투표 기반 매칭 가능 여부 확인 (yes 11명 이상)
+  const poll = await AttendancePoll.findOne({
+    team: team._id,
+    match: match._id,
+  }).exec();
+
+  if (!poll || !poll.canMatch) {
+    throw new ForbiddenError(
+      "이 매치에 대한 출석 투표에서 경기 가능 인원이 부족하여 매칭을 신청할 수 없습니다. (YES 11명 이상 필요)"
+    );
+  }
+
+  // 4. 이미 신청했는지 확인
   if (match.participants?.some((p: any) => p.team && p.team.equals(team._id))) {
     throw new ConflictError("이미 신청한 매칭입니다.");
   }
 
-  // 신청 추가
+  // 5. 신청 추가
   if (!match.participants) {
     match.participants = [];
   }
@@ -98,7 +100,7 @@ export async function applyMatchRequest(
 
   await match.save();
 
-  // 호스트 팀장에게 알림 생성
+  // 6. 호스트 팀장에게 알림 생성
   try {
     await createMatchApplyNotification(matchId, teamId);
   } catch (err) {
@@ -107,6 +109,8 @@ export async function applyMatchRequest(
 
   return match;
 }
+
+
 
 
 export async function getAppliedTeams(matchId: string, userId: string) {

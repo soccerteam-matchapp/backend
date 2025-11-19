@@ -4,10 +4,19 @@ import { ValidationError } from "../utils/errors";
 
 // 투표 생성
 export const createAttendancePoll = async (req: Request, res: Response) => {
-    const { teamId, question, expiresAt } = req.body;
-    if (!teamId || !question) throw new ValidationError("teamId와 question은 필수입니다.");
+    const { teamId, matchId, question, expiresAt } = req.body;
+    if (!teamId || !matchId || !question) {
+        throw new ValidationError("teamId, matchId, question은 필수입니다.");
+    }
 
-    const poll = await createPoll(teamId, (req as any).userId, question, expiresAt);
+    const poll = await createPoll(
+        teamId,
+        (req as any).userId,
+        matchId,
+        question,
+        expiresAt
+    );
+
     res.status(201).json({ status: 201, message: "투표 생성 성공", data: poll });
 };
 
@@ -16,10 +25,9 @@ export const voteAttendancePoll = async (req: Request, res: Response) => {
     const { pollId, choice } = req.body;
     if (!pollId || !choice) throw new ValidationError("pollId와 choice는 필수입니다.");
 
-    const poll = await votePoll(pollId, (req as any).userId, choice); // ⬅️ choice는 "yes"/"no"만 허용된다고 보면 됨
+    const poll = await votePoll(pollId, (req as any).userId, choice);
     res.status(200).json({ status: 200, message: "투표 성공", data: poll });
 };
-
 
 // 투표 결과 조회
 export const getAttendancePollResults = async (req: Request, res: Response) => {
