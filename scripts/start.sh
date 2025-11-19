@@ -2,7 +2,9 @@
 set -e
 
 echo "===== 런타임 컨테이너 시작 ====="
+echo "현재 시간: $(date)"
 echo "현재 디렉토리: $(pwd)"
+echo "Node.js 버전: $(node --version)"
 echo "파일 목록:"
 ls -la || true
 
@@ -62,5 +64,34 @@ fi
 
 # 서버 시작
 echo "===== 서버 시작 ====="
-node dist/index.js
+echo "환경 변수 확인:"
+echo "  NODE_ENV: ${NODE_ENV:-not set}"
+echo "  PORT: ${PORT:-not set}"
+if [ -z "$MONGO_URI" ]; then
+    echo "  ❌ MONGO_URI: 설정 안됨 (필수)"
+else
+    echo "  ✅ MONGO_URI: 설정됨 (길이: ${#MONGO_URI})"
+fi
+if [ -z "$JWT_SECRET" ]; then
+    echo "  ❌ JWT_SECRET: 설정 안됨 (필수)"
+else
+    echo "  ✅ JWT_SECRET: 설정됨 (길이: ${#JWT_SECRET})"
+fi
+
+echo ""
+echo "dist/index.js 파일 확인:"
+if [ ! -f "dist/index.js" ]; then
+    echo "❌ dist/index.js 파일이 없습니다!"
+    exit 1
+fi
+ls -lh dist/index.js
+
+echo ""
+echo "Node.js로 서버 실행 시작..."
+echo "=========================================="
+echo "실행 명령: node dist/index.js"
+echo "=========================================="
+
+# 포그라운드로 실행 (Cloudtype이 프로세스를 관리)
+exec node dist/index.js
 
