@@ -1,13 +1,13 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth';
-import { createTeam, getTeamByInvite, requestJoin, listPending, decideJoin } from '../services/team.service';
+import { createTeam as createTeamService, findTeamByInviteCode, requestTeamJoin, findPendingRequests, processJoinRequests } from '../services/team.service';
 import { ValidationError } from '../utils/errors';
 
-export const create = async (req: AuthenticatedRequest, res: Response) => {
+export const createTeam = async (req: AuthenticatedRequest, res: Response) => {
     const { teamName } = req.body;
     if (!teamName) throw new ValidationError('teamName이 필요합니다.');
     if (!req.userId) throw new ValidationError('인증이 필요합니다.');
-    const team = await createTeam(req.userId, teamName);
+    const team = await createTeamService(req.userId, teamName);
     return res.status(201).json({
         status: 201,
         message: '팀 생성 성공',
@@ -22,9 +22,9 @@ export const create = async (req: AuthenticatedRequest, res: Response) => {
     });
 };
 
-export const findByInvite = async (req: AuthenticatedRequest, res: Response) => {
+export const getTeamByInviteCode = async (req: AuthenticatedRequest, res: Response) => {
     const { code } = req.params;
-    const team = await getTeamByInvite(code);
+    const team = await findTeamByInviteCode(code);
     return res.status(200).json({
         status: 200,
         message: '팀 조회 성공',
@@ -38,11 +38,11 @@ export const findByInvite = async (req: AuthenticatedRequest, res: Response) => 
     });
 };
 
-export const joinByInvite = async (req: AuthenticatedRequest, res: Response) => {
+export const joinTeamByInviteCode = async (req: AuthenticatedRequest, res: Response) => {
     const { inviteCode } = req.body;
     if (!inviteCode) throw new ValidationError('inviteCode가 필요합니다.');
     if (!req.userId) throw new ValidationError('인증이 필요합니다.');
-    const team = await requestJoin(inviteCode, req.userId);
+    const team = await requestTeamJoin(inviteCode, req.userId);
     return res.status(200).json({
         status: 200,
         message: '가입 요청 접수',
@@ -53,10 +53,10 @@ export const joinByInvite = async (req: AuthenticatedRequest, res: Response) => 
     });
 };
 
-export const getPending = async (req: AuthenticatedRequest, res: Response) => {
+export const getPendingRequests = async (req: AuthenticatedRequest, res: Response) => {
     const { teamId } = req.params;
     if (!req.userId) throw new ValidationError('인증이 필요합니다.');
-    const list = await listPending(teamId, req.userId);
+    const list = await findPendingRequests(teamId, req.userId);
     return res.status(200).json({
         status: 200,
         message: '가입 대기 목록',
@@ -64,10 +64,10 @@ export const getPending = async (req: AuthenticatedRequest, res: Response) => {
     });
 };
 
-export const decide = async (req: AuthenticatedRequest, res: Response) => {
+export const decideJoinRequests = async (req: AuthenticatedRequest, res: Response) => {
     const { teamId } = req.params;
     const { accept = [], reject = [] } = req.body as { accept?: string[]; reject?: string[] };
     if (!req.userId) throw new ValidationError('인증이 필요합니다.');
-    const result = await decideJoin(teamId, req.userId, accept, reject);
+    const result = await processJoinRequests(teamId, req.userId, accept, reject);
     return res.status(200).json({ status: 200, message: '처리 완료', data: result });
 };

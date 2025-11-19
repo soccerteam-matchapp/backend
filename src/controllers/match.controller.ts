@@ -1,11 +1,11 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth";
-import { createMatchRequest, applyMatchRequest, getAppliedTeams, acceptMatchTeam, getConfirmedMatches } from "../services/match.service";
+import { createMatch as createMatchService, applyToMatch as applyToMatchService, findAppliedTeams, acceptTeamForMatch, findConfirmedMatches } from "../services/match.service";
 import { ValidationError, NotFoundError } from "../utils/errors";
 import { Match } from "../models/match.model";
 
 
-export const create = async (req: AuthenticatedRequest, res: Response) => {
+export const createMatch = async (req: AuthenticatedRequest, res: Response) => {
     const {
         teamId,
         date,
@@ -36,7 +36,7 @@ export const create = async (req: AuthenticatedRequest, res: Response) => {
         throw new ValidationError("인증이 필요합니다.");
     }
 
-    const match = await createMatchRequest(
+    const match = await createMatchService(
         teamId,
         req.userId,
         date,
@@ -55,7 +55,7 @@ export const create = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 
-export const list = async (req: AuthenticatedRequest, res: Response) => {
+export const getMatches = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const matches = await Match.find()
             .sort({ createdAt: -1 }) // 최신순
@@ -78,7 +78,7 @@ export const list = async (req: AuthenticatedRequest, res: Response) => {
     }
 };
 
-export const apply = async (req: AuthenticatedRequest, res: Response) => {
+export const applyToMatch = async (req: AuthenticatedRequest, res: Response) => {
     const { teamId, matchId, players } = req.body;
     if (!teamId || !matchId || !players) {
         throw new ValidationError("필수 값이 누락되었습니다.");
@@ -88,7 +88,7 @@ export const apply = async (req: AuthenticatedRequest, res: Response) => {
         throw new ValidationError("인증이 필요합니다.");
     }
 
-    const match = await applyMatchRequest(
+    const match = await applyToMatchService(
         teamId,
         req.userId,
         matchId,
@@ -103,7 +103,7 @@ export const apply = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 
-export const participants = async (req: AuthenticatedRequest, res: Response) => {
+export const getMatchParticipants = async (req: AuthenticatedRequest, res: Response) => {
     const { matchId } = req.params;
     if (!matchId) {
         throw new ValidationError("matchId가 필요합니다.");
@@ -113,7 +113,7 @@ export const participants = async (req: AuthenticatedRequest, res: Response) => 
         throw new ValidationError("인증이 필요합니다.");
     }
 
-    const participants = await getAppliedTeams(matchId, req.userId);
+    const participants = await findAppliedTeams(matchId, req.userId);
 
     return res.status(200).json({
         status: 200,
@@ -122,7 +122,7 @@ export const participants = async (req: AuthenticatedRequest, res: Response) => 
     });
 };
 
-export const acceptTeam = async (req: AuthenticatedRequest, res: Response) => {
+export const acceptMatchTeam = async (req: AuthenticatedRequest, res: Response) => {
     const { matchId, teamId } = req.body;
     if (!matchId || !teamId) {
         throw new ValidationError("matchId와 teamId가 필요합니다.");
@@ -132,7 +132,7 @@ export const acceptTeam = async (req: AuthenticatedRequest, res: Response) => {
         throw new ValidationError("인증이 필요합니다.");
     }
 
-    const match = await acceptMatchTeam(matchId, req.userId, teamId);
+    const match = await acceptTeamForMatch(matchId, req.userId, teamId);
 
     return res.status(200).json({
         status: 200,
@@ -141,8 +141,8 @@ export const acceptTeam = async (req: AuthenticatedRequest, res: Response) => {
     });
 };
 
-export const confirmed = async (req: AuthenticatedRequest, res: Response) => {
-    const matches = await getConfirmedMatches();
+export const getConfirmedMatches = async (req: AuthenticatedRequest, res: Response) => {
+    const matches = await findConfirmedMatches();
 
     return res.status(200).json({
         status: 200,

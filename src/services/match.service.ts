@@ -4,7 +4,7 @@ import { Team } from "../models/team.model";
 import { ForbiddenError, NotFoundError, ConflictError } from "../utils/errors";
 import { createMatchApplyNotification, createMatchAcceptedNotification } from "./notification.service";
 
-export async function createMatchRequest(
+export async function createMatch(
   teamId: string,
   leaderId: string,
   date: string,
@@ -45,63 +45,63 @@ export async function createMatchRequest(
 }
 
 
-export async function applyMatchRequest(
-    teamId: string,
-    leaderId: string,
-    matchId: string, // 신청할 매칭 ID
-    players: number
+export async function applyToMatch(
+  teamId: string,
+  leaderId: string,
+  matchId: string, // 신청할 매칭 ID
+  players: number
 ) {
-    const team = await Team.findById(teamId);
-    if (!team) throw new NotFoundError("팀을 찾을 수 없습니다.");
+  const team = await Team.findById(teamId);
+  if (!team) throw new NotFoundError("팀을 찾을 수 없습니다.");
 
-    // 팀장 권한 확인
-    if (!team.leader.equals(new Types.ObjectId(leaderId))) {
-        throw new ForbiddenError("팀장만 매칭을 신청할 수 있습니다.");
-    }
+  // 팀장 권한 확인
+  if (!team.leader.equals(new Types.ObjectId(leaderId))) {
+    throw new ForbiddenError("팀장만 매칭을 신청할 수 있습니다.");
+  }
 
-    // 매칭 가능 여부 확인
-    if (!team.canMatch) {
-        throw new ForbiddenError("팀원 수가 부족하여 매칭을 신청할 수 없습니다. (최소 9명 필요)");
-    }
+  // 매칭 가능 여부 확인
+  if (!team.canMatch) {
+    throw new ForbiddenError("팀원 수가 부족하여 매칭을 신청할 수 없습니다. (최소 9명 필요)");
+  }
 
-    // 매칭 조회
-    const match = await Match.findById(matchId);
-    if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
+  // 매칭 조회
+  const match = await Match.findById(matchId);
+  if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
 
-    // 자기 팀 매칭 신청 방지
-    if (match.team.equals(teamId)) {
-        throw new ForbiddenError("자기 팀 매칭에는 신청할 수 없습니다.");
-    }
+  // 자기 팀 매칭 신청 방지
+  if (match.team.equals(teamId)) {
+    throw new ForbiddenError("자기 팀 매칭에는 신청할 수 없습니다.");
+  }
 
-    // 이미 신청했는지 확인
-    if (match.participants?.some((p: any) => p.team && p.team.equals(team._id))) {
-        throw new ConflictError("이미 신청한 매칭입니다.");
-    }
+  // 이미 신청했는지 확인
+  if (match.participants?.some((p: any) => p.team && p.team.equals(team._id))) {
+    throw new ConflictError("이미 신청한 매칭입니다.");
+  }
 
-    // 신청 추가
-    if (!match.participants) {
-        match.participants = [];
-    }
+  // 신청 추가
+  if (!match.participants) {
+    match.participants = [];
+  }
 
-    match.participants.push({
-        team: team._id as Types.ObjectId,
-        players
-    } as any);
+  match.participants.push({
+    team: team._id as Types.ObjectId,
+    players
+  } as any);
 
-    await match.save();
+  await match.save();
 
-    // 호스트 팀장에게 알림 생성
-    try {
-        await createMatchApplyNotification(matchId, teamId);
-    } catch (err) { 
-        // 알림 생성 실패해도 매칭 신청은 성공 처리
-        console.warn('알림 생성 실패:', err);
-    }
+  // 호스트 팀장에게 알림 생성
+  try {
+    await createMatchApplyNotification(matchId, teamId);
+  } catch (err) {
+    // 알림 생성 실패해도 매칭 신청은 성공 처리
+    console.warn('알림 생성 실패:', err);
+  }
 
-    return match;
+  return match;
 }
 
-export async function getAppliedTeams(matchId: string, userId: string) {
+export async function findAppliedTeams(matchId: string, userId: string) {
   const match = await Match.findById(matchId)
     .populate({
       path: "participants.team",           // ✅ participants.team으로 수정
@@ -121,7 +121,7 @@ export async function getAppliedTeams(matchId: string, userId: string) {
   return match.participants;
 }
 
-export async function acceptMatchTeam(matchId: string, userId: string, acceptedTeamId: string) {
+export async function acceptTeamForMatch(matchId: string, userId: string, acceptedTeamId: string) {
   const match = await Match.findById(matchId).populate("participants").exec();
   if (!match) throw new NotFoundError("매칭을 찾을 수 없습니다.");
 
@@ -151,25 +151,25 @@ export async function acceptMatchTeam(matchId: string, userId: string, acceptedT
 }
 
 
-export async function getConfirmedMatches() {
-    const matches = await Match.find({
-        status: "accepted",       // 수락된 매칭만
-        acceptedTeam: { $exists: true }  // acceptedTeam이 있는 매칭
+export async function findConfirmedMatches() {
+  const matches = await Match.find({
+    status: "accepted",       // 수락된 매칭만
+    acceptedTeam: { $exists: true }  // acceptedTeam이 있는 매칭
+  })
+    .populate({
+      path: "team",
+      select: "teamName leader members",
     })
-        .populate({
-            path: "team",
-            select: "teamName leader members",
-        })
-        .populate({
-            path: "acceptedTeam",
-            select: "teamName leader members",
-        })
-        .sort({ createdAt: -1 })
-        .exec();
+    .populate({
+      path: "acceptedTeam",
+      select: "teamName leader members",
+    })
+    .sort({ createdAt: -1 })
+    .exec();
 
-    if (!matches || matches.length === 0) {
-        throw new NotFoundError("성사된 매칭이 없습니다.");
-    }
+  if (!matches || matches.length === 0) {
+    throw new NotFoundError("성사된 매칭이 없습니다.");
+  }
 
-    return matches;
+  return matches;
 }

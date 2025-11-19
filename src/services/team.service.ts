@@ -38,14 +38,14 @@ export async function createTeam(leaderId: string, teamName: string): Promise<IT
 }
 
 /** 초대코드로 팀 조회(가입 전 미리보기 등) */
-export async function getTeamByInvite(inviteCode: string): Promise<ITeam> {
+export async function findTeamByInviteCode(inviteCode: string): Promise<ITeam> {
     const team = await Team.findOne({ inviteCode }).exec();
     if (!team) throw new NotFoundError('해당 초대코드의 팀을 찾을 수 없습니다.');
     return team;
 }
 
 /** 초대코드로 가입 요청 추가 */
-export async function requestJoin(inviteCode: string, userId: string): Promise<ITeam> {
+export async function requestTeamJoin(inviteCode: string, userId: string): Promise<ITeam> {
     const team = await Team.findOne({ inviteCode }).exec();
     if (!team) throw new NotFoundError('해당 초대코드의 팀을 찾을 수 없습니다.');
 
@@ -70,7 +70,7 @@ export async function requestJoin(inviteCode: string, userId: string): Promise<I
 }
 
 /** 리더만: 대기중 요청 목록 조회(간단 정보 포함) */
-export async function listPending(teamId: string, leaderId: string) {
+export async function findPendingRequests(teamId: string, leaderId: string) {
     const team = await Team.findById(teamId).populate('pending', '_id name id').exec();
     if (!team) throw new NotFoundError('팀을 찾을 수 없습니다.');
     if (!team.leader.equals(new Types.ObjectId(leaderId))) {
@@ -80,7 +80,7 @@ export async function listPending(teamId: string, leaderId: string) {
 }
 
 /** 리더만: 일괄 수락/거절 */
-export async function decideJoin(teamId: string, leaderId: string, acceptIds: string[], rejectIds: string[]) {
+export async function processJoinRequests(teamId: string, leaderId: string, acceptIds: string[], rejectIds: string[]) {
     const team = await Team.findById(teamId).exec();
     if (!team) throw new NotFoundError('팀을 찾을 수 없습니다.');
     if (!team.leader.equals(new Types.ObjectId(leaderId))) {
