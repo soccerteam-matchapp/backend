@@ -3,48 +3,25 @@ import { AuthenticatedRequest } from "../middlewares/auth";
 import { createMatch as createMatchService, applyToMatch as applyToMatchService, findAppliedTeams, acceptTeamForMatch, findConfirmedMatches } from "../services/match.service";
 import { ValidationError, NotFoundError } from "../utils/errors";
 import { Match } from "../models/match.model";
+import { CreateMatchDto, ApplyToMatchDto, AcceptMatchTeamDto } from "../dto/match.dto";
 
 
 export const createMatch = async (req: AuthenticatedRequest, res: Response) => {
-    const {
-        teamId,
-        date,
-        location,
-        players,
-        // ⬇️ 새 필드
-        skill,       // "beginner" | "intermediate" | "advanced"
-        fieldCost,   // number
-        proCount,    // number (optional)
-    } = req.body;
-
-    if (!teamId || !date || !location || !players || !skill || fieldCost === undefined) {
-        throw new ValidationError("필수 값이 누락되었습니다. (teamId, date, location, players, skill, fieldCost)");
-    }
-
-    // 가벼운 값 검증 (선택)
-    if (!["beginner", "intermediate", "advanced"].includes(skill)) {
-        throw new ValidationError("skill은 beginner|intermediate|advanced 중 하나여야 합니다.");
-    }
-    if (typeof fieldCost !== "number" || fieldCost < 0) {
-        throw new ValidationError("fieldCost는 0 이상의 숫자여야 합니다.");
-    }
-    if (proCount !== undefined && (typeof proCount !== "number" || proCount < 0)) {
-        throw new ValidationError("proCount는 0 이상의 숫자여야 합니다.");
-    }
-
     if (!req.userId) {
         throw new ValidationError("인증이 필요합니다.");
     }
+
+    const { teamId, date, location, players, skill, fieldCost, proCount } = req.body as CreateMatchDto;
 
     const match = await createMatchService(
         teamId,
         req.userId,
         date,
         location,
-        Number(players),
+        players,
         skill,
-        Number(fieldCost),
-        proCount !== undefined ? Number(proCount) : 0
+        fieldCost,
+        proCount ?? 0
     );
 
     return res.status(201).json({
@@ -79,14 +56,11 @@ export const getMatches = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 export const applyToMatch = async (req: AuthenticatedRequest, res: Response) => {
-    const { teamId, matchId, players } = req.body;
-    if (!teamId || !matchId || !players) {
-        throw new ValidationError("필수 값이 누락되었습니다.");
-    }
-
     if (!req.userId) {
         throw new ValidationError("인증이 필요합니다.");
     }
+
+    const { teamId, matchId, players } = req.body as ApplyToMatchDto;
 
     const match = await applyToMatchService(
         teamId,
@@ -123,14 +97,11 @@ export const getMatchParticipants = async (req: AuthenticatedRequest, res: Respo
 };
 
 export const acceptMatchTeam = async (req: AuthenticatedRequest, res: Response) => {
-    const { matchId, teamId } = req.body;
-    if (!matchId || !teamId) {
-        throw new ValidationError("matchId와 teamId가 필요합니다.");
-    }
-
     if (!req.userId) {
         throw new ValidationError("인증이 필요합니다.");
     }
+
+    const { matchId, teamId } = req.body as AcceptMatchTeamDto;
 
     const match = await acceptTeamForMatch(matchId, req.userId, teamId);
 
