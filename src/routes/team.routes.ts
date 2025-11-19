@@ -1,6 +1,11 @@
 import { Router } from 'express';
-import { asyncHandler, requireAuth } from '../middlewares/auth';
-import { create, findByInvite, joinByInvite, getPending, decide } from '../controllers/team.controller';
+import { asyncHandler, requireAuth, requireLeader } from '../middlewares/auth';
+import { validateDto } from '../middlewares/validation.middleware';
+import { CreateTeamDto, JoinTeamByInviteCodeDto, DecideJoinRequestDto } from '../dto/team.dto';
+import { RateTeamDto } from '../dto/rating.dto';
+import { createTeam, getTeamByInviteCode, joinTeamByInviteCode, getPendingRequests, decideJoinRequest } from '../controllers/team';
+import { rateTeam, getRatingSummary, getRatingList } from '../controllers/rating.controller';
+
 
 const router = Router();
 
@@ -8,16 +13,21 @@ const router = Router();
 router.use(requireAuth);
 
 // 팀 만들기 (리더=요청자)
-router.post('/', asyncHandler(create));
+router.post('/', validateDto(CreateTeamDto), asyncHandler(createTeam));
 
 // 초대코드로 팀 조회(가입 전 정보)
-router.get('/invite/:code', asyncHandler(findByInvite));
+router.get('/invite/:code', asyncHandler(getTeamByInviteCode));
 
 // 초대코드로 가입 요청
-router.post('/join', asyncHandler(joinByInvite));
+router.post('/join', validateDto(JoinTeamByInviteCodeDto), asyncHandler(joinTeamByInviteCode));
 
-// 팀장만: 대기중 요청 조회/일괄 결정
-router.get('/:teamId/requests', asyncHandler(getPending));
-router.post('/:teamId/requests/decide', asyncHandler(decide));
+// 팀장만: 대기중 요청 조회/단일 결정
+router.get('/:teamId/requests', requireLeader, asyncHandler(getPendingRequests));
+router.post('/:teamId/requests/decide', requireLeader, validateDto(DecideJoinRequestDto), asyncHandler(decideJoinRequest));
+
+// 팀 평점 API
+router.post('/:teamId/ratings', validateDto(RateTeamDto), asyncHandler(rateTeam));            // 생성/수정(upsert)
+router.get('/:teamId/ratings/summary', asyncHandler(getRatingSummary));
+router.get('/:teamId/ratings', asyncHandler(getRatingList));
 
 export default router;
