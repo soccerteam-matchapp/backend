@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { User, IUser } from '../models/user.model';
 import { ValidationError, AuthError } from '../utils/errors';
+import { JwtPayload } from '../middlewares/auth';
 
 const ACCESS_TOKEN_EXPIRES_IN = '1h';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
@@ -82,9 +83,9 @@ export const loginService = async (id: string, password: string): Promise<LoginR
 
 /** 리프레시 토큰 재발급 */
 export const refreshTokenService = async (token: string): Promise<{ accessToken: string; refreshToken: string }> => {
-    let payload: any;
+    let payload: JwtPayload;
     try {
-        payload = jwt.verify(token, getJwtSecret()) as { sub?: string };
+        payload = jwt.verify(token, getJwtSecret()) as JwtPayload;
     } catch {
         throw new AuthError('Invalid refresh token.');
     }

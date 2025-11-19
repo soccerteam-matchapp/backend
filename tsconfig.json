@@ -9,7 +9,10 @@
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "strict": false,
-        "noEmitOnError": false
+        "noEmitOnError": false,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "useDefineForClassFields": false
     },
     "include": [
         "src/**/*.ts",
