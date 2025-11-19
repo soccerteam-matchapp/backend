@@ -284,6 +284,7 @@
   get:
     tags: [Team]
     summary: 가입 대기 목록(팀장 전용)
+    description: JWT 토큰의 role이 'leader'인 사용자만 접근 가능합니다.
     security: [{ BearerAuth: [] }]
     parameters:
       - in: path
@@ -341,7 +342,10 @@
 /teams/{teamId}/requests/decide:
   post:
     tags: [Team]
-    summary: 가입 요청 일괄 수락/거절(팀장 전용)
+    summary: 가입 요청 단일 수락/거절(팀장 전용)
+    description: |
+      하나의 가입 요청을 수락하거나 거절합니다. 여러 사용자를 처리하려면 API를 여러 번 호출하세요.
+      JWT 토큰의 role이 'leader'인 사용자만 접근 가능합니다.
     security: [{ BearerAuth: [] }]
     parameters:
       - in: path
@@ -355,22 +359,23 @@
           schema:
             type: object
             properties:
-              accept:
-                type: array
-                items: { type: string, description: "수락할 사용자 _id" }
-              reject:
-                type: array
-                items: { type: string, description: "거절할 사용자 _id" }
-            required: [accept, reject]
+              userId:
+                type: string
+                description: "처리할 사용자 _id"
+              action:
+                type: string
+                enum: [accept, reject]
+                description: "수락(accept) 또는 거절(reject)"
+            required: [userId, action]
           examples:
-            acceptSome:
+            accept:
               value:
-                accept: ["66c7e2d2f3a4f2bb1e8e1b11"]
-                reject: []
-            rejectSome:
+                userId: "66c7e2d2f3a4f2bb1e8e1b11"
+                action: "accept"
+            reject:
               value:
-                accept: []
-                reject: ["66c7e2d2f3a4f2bb1e8e1b22"]
+                userId: "66c7e2d2f3a4f2bb1e8e1b22"
+                action: "reject"
     responses:
       "200":
         description: OK
@@ -385,12 +390,12 @@
                       type: object
                       properties:
                         teamId: { type: string }
+                        userId: { type: string }
+                        action: { type: string, enum: [accept, reject] }
                         memberNum: { type: integer }
                         canMatch: { type: boolean }
-                        accepted: { type: integer }
-                        rejected: { type: integer }
                         remainingPending: { type: integer }
-                      required: [teamId, memberNum, canMatch, accepted, rejected, remainingPending]
+                      required: [teamId, userId, action, memberNum, canMatch, remainingPending]
             examples:
               ok:
                 value:
@@ -398,10 +403,10 @@
                   message: "처리 완료"
                   data:
                     teamId: "66cc7a7f0c2e3a1234567890"
+                    userId: "66c7e2d2f3a4f2bb1e8e1b11"
+                    action: "accept"
                     memberNum: 9
                     canMatch: true
-                    accepted: 1
-                    rejected: 0
                     remainingPending: 2
       "400": { $ref: "./openapi.yaml#/components/responses/BadRequest" }
       "401": { $ref: "./openapi.yaml#/components/responses/Unauthorized" }
@@ -567,8 +572,10 @@
   post:
     tags: [Match]
     summary: 매칭 생성(호스트 팀장 전용)
+    description: |
+      호스트 팀의 **팀장**만 생성할 수 있으며, 팀원 9명 이상 조건을 만족해야 합니다.
+      JWT 토큰의 role이 'leader'인 사용자만 접근 가능합니다.
     security: [{ BearerAuth: [] }]
-    description: 호스트 팀의 **팀장**만 생성할 수 있으며, 팀원 11명 이상 조건을 만족해야 합니다.
     requestBody:
       required: true
       content:
@@ -581,6 +588,9 @@
                 date: "2025-09-20T10:00:00+09:00"
                 location: "강남구 A구장"
                 players: 11
+                skill: "intermediate"
+                fieldCost: 120000
+                proCount: 0
     responses:
       "201":
         description: Created
@@ -707,8 +717,10 @@
   post:
     tags: [Match]
     summary: 매칭 신청(게스트 팀장 전용)
+    description: |
+      게스트 팀 **팀장**만 신청 가능하며, 팀원 9명 이상 조건을 만족해야 합니다.
+      JWT 토큰의 role이 'leader'인 사용자만 접근 가능합니다.
     security: [{ BearerAuth: [] }]
-    description: 게스트 팀 **팀장**만 신청 가능하며, 팀원 11명 이상 조건을 만족해야 합니다.
     requestBody:
       required: true
       content:
@@ -757,9 +769,12 @@
 /matches/{matchId}/participants:
   get:
     tags: [Match]
-    summary: 매칭 참가팀 조회
+    summary: 매칭 참가팀 조회(호스트 팀장 전용)
+    description: |
+      특정 매칭에 신청한 게스트 팀 목록을 조회합니다.
+      해당 매칭의 호스트 팀장만 조회 가능합니다.
+      JWT 토큰의 role이 'leader'인 사용자만 접근 가능합니다.
     security: [{ BearerAuth: [] }]
-    description: 특정 매칭에 신청한 게스트 팀 목록을 조회합니다.
     parameters:
       - in: path
         name: matchId
@@ -800,8 +815,11 @@
   post:
     tags: [Match]
     summary: 팀 매칭 수락(호스트 팀장 전용)
+    description: |
+      호스트 팀장이 게스트 팀의 매칭 신청을 수락합니다.
+      해당 매칭의 호스트 팀장만 수락 가능합니다.
+      JWT 토큰의 role이 'leader'인 사용자만 접근 가능합니다.
     security: [{ BearerAuth: [] }]
-    description: 호스트 팀장이 게스트 팀의 매칭 신청을 수락합니다.
     requestBody:
       required: true
       content:
