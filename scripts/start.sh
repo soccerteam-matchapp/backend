@@ -36,23 +36,45 @@ if [ ! -f "dist/index.js" ]; then
   echo "---- TypeScript 컴파일 (메모리 제한: 4GB) ----"
   export NODE_OPTIONS="--max-old-space-size=4096"
   if [ -f "node_modules/.bin/tsc" ]; then
-    ./node_modules/.bin/tsc
-    TSC_EXIT=$?
+    echo "tsc 경로: $(pwd)/node_modules/.bin/tsc"
+    ./node_modules/.bin/tsc 2>&1 | head -50
+    TSC_EXIT=${PIPESTATUS[0]}
     if [ $TSC_EXIT -ne 0 ]; then
       echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
+      echo "에러 상세:"
+      ./node_modules/.bin/tsc 2>&1 | tail -20
       exit $TSC_EXIT
     fi
     echo "✅ TypeScript 컴파일 완료"
   elif command -v tsc >/dev/null 2>&1; then
-    tsc
-    TSC_EXIT=$?
+    echo "tsc 경로: $(which tsc)"
+    tsc 2>&1 | head -50
+    TSC_EXIT=${PIPESTATUS[0]}
     if [ $TSC_EXIT -ne 0 ]; then
       echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
+      echo "에러 상세:"
+      tsc 2>&1 | tail -20
       exit $TSC_EXIT
     fi
     echo "✅ TypeScript 컴파일 완료"
   else
     echo "❌ tsc를 찾을 수 없습니다. typescript가 설치되었는지 확인하세요."
+    exit 1
+  fi
+  
+  # dist/index.js 생성 확인
+  echo ""
+  echo "---- dist/index.js 생성 확인 ----"
+  if [ -f "dist/index.js" ]; then
+    echo "✅ dist/index.js 생성됨"
+    ls -lh dist/index.js
+    echo "파일 크기: $(wc -c < dist/index.js) bytes"
+    echo "첫 5줄:"
+    head -5 dist/index.js
+  else
+    echo "❌ dist/index.js가 생성되지 않았습니다!"
+    echo "dist 폴더 내용:"
+    ls -la dist/ 2>/dev/null || echo "dist 폴더 없음"
     exit 1
   fi
   
@@ -99,18 +121,33 @@ fi
 ls -lh dist/index.js
 
 echo ""
-echo "Node.js로 서버 실행 시작..."
-echo "=========================================="
-echo "실행 명령: node dist/index.js"
+echo "===== 서버 실행 준비 ====="
 echo "현재 디렉토리: $(pwd)"
+echo "Node.js 버전: $(node --version)"
 echo "dist/index.js 절대 경로: $(pwd)/dist/index.js"
-echo "dist/index.js 존재 여부: $([ -f dist/index.js ] && echo 'YES' || echo 'NO')"
+echo "dist/index.js 존재 여부: $([ -f dist/index.js ] && echo '✅ YES' || echo '❌ NO')"
+if [ ! -f "dist/index.js" ]; then
+    echo "❌ dist/index.js 파일이 없습니다. 빌드를 다시 시도합니다."
+    exit 1
+fi
+echo "dist/index.js 파일 크기: $(wc -c < dist/index.js) bytes"
+echo ""
+echo "환경 변수:"
+echo "  PORT: ${PORT:-3000 (기본값)}"
+echo "  NODE_ENV: ${NODE_ENV:-not set}"
+echo "  MONGO_URI: ${MONGO_URI:+설정됨 (길이: ${#MONGO_URI})}${MONGO_URI:-❌ 설정 안됨}"
+echo "  JWT_SECRET: ${JWT_SECRET:+설정됨 (길이: ${#JWT_SECRET})}${JWT_SECRET:-❌ 설정 안됨}"
+echo ""
 echo "=========================================="
+echo "Node.js로 서버 실행 시작..."
+echo "실행 명령: node dist/index.js"
+echo "=========================================="
+echo ""
 
 # 포그라운드로 실행 (Cloudtype이 프로세스를 관리)
-# exec 대신 직접 실행하여 에러가 나도 로그가 남도록
 # stderr도 stdout으로 리다이렉트하여 모든 로그가 보이도록
-node dist/index.js 2>&1
+# NODE_ENV를 명시적으로 설정하여 버퍼링 방지
+NODE_ENV=${NODE_ENV:-production} node dist/index.js 2>&1
 
 # 만약 서버가 종료되면 종료 코드 반환
 EXIT_CODE=$?

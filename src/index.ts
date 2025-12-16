@@ -142,44 +142,58 @@ console.log(`  MONGO_URI: ${MONGO_URI ? `설정됨 (길이: ${MONGO_URI.length})
 console.log(`  JWT_SECRET: ${JWT_SECRET ? `설정됨 (길이: ${JWT_SECRET.length})` : '❌ 설정 안됨'}`);
 
 // 서버를 먼저 시작 (환경 변수 체크 전에도 헬스체크 가능)
-// 에러 핸들링 추가
+console.log('');
+console.log('===== 서버 시작 시도 =====');
+console.log(`포트: ${PORT}, 호스트: ${HOST}`);
+
+let server: any;
 try {
-    const server = app.listen(PORT, HOST, () => {
+    server = app.listen(PORT, HOST, () => {
+        console.log('');
         console.log('========================================');
         console.log(`🚀 Server listening on http://${HOST}:${PORT}`);
         console.log(`📖 Swagger UI: http://${HOST}:${PORT}/api-docs`);
         console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
         console.log('========================================');
+        console.log('');
         
         // 서버 시작 후 환경 변수 체크 (서버는 계속 실행)
         if (!MONGO_URI) {
-            console.error('');
             console.error('⚠️  MONGO_URI가 설정되지 않았습니다.');
             console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
             console.error('서버는 실행 중이지만 데이터베이스 기능이 작동하지 않습니다.');
-            console.error('');
         }
         
         if (!JWT_SECRET) {
-            console.error('');
             console.error('⚠️  JWT_SECRET이 설정되지 않았습니다.');
             console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
             console.error('서버는 실행 중이지만 인증 기능이 작동하지 않습니다.');
-            console.error('');
         }
     });
 
     // 서버 에러 핸들링
     server.on('error', (err: NodeJS.ErrnoException) => {
+        console.error('');
+        console.error('❌ 서버 listen 에러 발생:');
         if (err.code === 'EADDRINUSE') {
-            console.error(`❌ 포트 ${PORT}가 이미 사용 중입니다.`);
+            console.error(`포트 ${PORT}가 이미 사용 중입니다.`);
         } else {
-            console.error('❌ 서버 에러:', err);
+            console.error('에러 코드:', err.code);
+            console.error('에러 메시지:', err.message);
+            console.error('에러 스택:', err.stack);
         }
         process.exit(1);
     });
-} catch (err) {
-    console.error('❌ 서버 시작 실패:', err);
+    
+    console.log('✅ 서버 listen 호출 완료 (콜백 대기 중...)');
+} catch (err: any) {
+    console.error('');
+    console.error('❌ 서버 시작 실패:');
+    console.error('에러 타입:', err?.constructor?.name || typeof err);
+    console.error('에러 메시지:', err?.message || String(err));
+    if (err?.stack) {
+        console.error('에러 스택:', err.stack);
+    }
     process.exit(1);
 }
 
