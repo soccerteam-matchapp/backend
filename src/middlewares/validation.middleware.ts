@@ -19,11 +19,11 @@ export function validateDto<T extends object>(
         });
 
         // 검증 수행
+        // transform은 plainToInstance에서 이미 처리되므로 validate 옵션에는 포함하지 않음
         const errors: ValidationError[] = await validate(dto, {
             skipMissingProperties,
             whitelist: true, // DTO에 정의되지 않은 속성 제거
             forbidNonWhitelisted: true, // DTO에 정의되지 않은 속성이 있으면 에러
-            transform: true, // 타입 자동 변환 (문자열 -> 숫자 등)
         });
 
         if (errors.length > 0) {

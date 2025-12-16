@@ -35,27 +35,58 @@ if [ ! -f "dist/index.js" ]; then
   # TypeScript 컴파일 (로컬에 설치된 tsc 사용, 메모리 제한 증가)
   echo "---- TypeScript 컴파일 (메모리 제한: 4GB) ----"
   export NODE_OPTIONS="--max-old-space-size=4096"
+  
+  # tsc 실행 전 dist 폴더 확인
+  echo "컴파일 전 dist 폴더 상태:"
+  ls -la dist/ 2>/dev/null || echo "dist 폴더 없음 (정상)"
+  
   if [ -f "node_modules/.bin/tsc" ]; then
     echo "tsc 경로: $(pwd)/node_modules/.bin/tsc"
-    ./node_modules/.bin/tsc 2>&1 | head -50
-    TSC_EXIT=${PIPESTATUS[0]}
+    echo "tsc 버전 확인:"
+    ./node_modules/.bin/tsc --version || echo "버전 확인 실패"
+    echo ""
+    echo "tsc 실행 시작..."
+    echo "시작 시간: $(date)"
+    
+    # tsc 실행 (모든 출력 즉시 표시)
+    ./node_modules/.bin/tsc 2>&1
+    TSC_EXIT=$?
+    
+    echo ""
+    echo "종료 시간: $(date)"
+    echo "TypeScript 컴파일 종료 코드: $TSC_EXIT"
+    
     if [ $TSC_EXIT -ne 0 ]; then
       echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
-      echo "에러 상세:"
-      ./node_modules/.bin/tsc 2>&1 | tail -20
+      echo "dist 폴더 상태:"
+      ls -la dist/ 2>/dev/null || echo "dist 폴더 없음"
       exit $TSC_EXIT
     fi
+    
     echo "✅ TypeScript 컴파일 완료"
   elif command -v tsc >/dev/null 2>&1; then
     echo "tsc 경로: $(which tsc)"
-    tsc 2>&1 | head -50
-    TSC_EXIT=${PIPESTATUS[0]}
+    echo "tsc 버전 확인:"
+    tsc --version || echo "버전 확인 실패"
+    echo ""
+    echo "tsc 실행 시작..."
+    echo "시작 시간: $(date)"
+    
+    # tsc 실행 (모든 출력 즉시 표시)
+    tsc 2>&1
+    TSC_EXIT=$?
+    
+    echo ""
+    echo "종료 시간: $(date)"
+    echo "TypeScript 컴파일 종료 코드: $TSC_EXIT"
+    
     if [ $TSC_EXIT -ne 0 ]; then
       echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
-      echo "에러 상세:"
-      tsc 2>&1 | tail -20
+      echo "dist 폴더 상태:"
+      ls -la dist/ 2>/dev/null || echo "dist 폴더 없음"
       exit $TSC_EXIT
     fi
+    
     echo "✅ TypeScript 컴파일 완료"
   else
     echo "❌ tsc를 찾을 수 없습니다. typescript가 설치되었는지 확인하세요."
@@ -65,16 +96,19 @@ if [ ! -f "dist/index.js" ]; then
   # dist/index.js 생성 확인
   echo ""
   echo "---- dist/index.js 생성 확인 ----"
+  sleep 1  # 파일 시스템 동기화 대기
   if [ -f "dist/index.js" ]; then
     echo "✅ dist/index.js 생성됨"
     ls -lh dist/index.js
     echo "파일 크기: $(wc -c < dist/index.js) bytes"
-    echo "첫 5줄:"
-    head -5 dist/index.js
+    echo "파일 첫 부분 (20줄):"
+    head -20 dist/index.js
   else
     echo "❌ dist/index.js가 생성되지 않았습니다!"
-    echo "dist 폴더 내용:"
+    echo "dist 폴더 전체 내용:"
     ls -la dist/ 2>/dev/null || echo "dist 폴더 없음"
+    echo "dist 폴더의 모든 파일:"
+    find dist -type f 2>/dev/null || echo "파일 없음"
     exit 1
   fi
   
