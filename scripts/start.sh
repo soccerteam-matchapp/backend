@@ -36,9 +36,21 @@ if [ ! -f "dist/index.js" ]; then
   echo "---- TypeScript 컴파일 (메모리 제한: 4GB) ----"
   export NODE_OPTIONS="--max-old-space-size=4096"
   if [ -f "node_modules/.bin/tsc" ]; then
-    ./node_modules/.bin/tsc || exit 1
+    ./node_modules/.bin/tsc
+    TSC_EXIT=$?
+    if [ $TSC_EXIT -ne 0 ]; then
+      echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
+      exit $TSC_EXIT
+    fi
+    echo "✅ TypeScript 컴파일 완료"
   elif command -v tsc >/dev/null 2>&1; then
-    tsc || exit 1
+    tsc
+    TSC_EXIT=$?
+    if [ $TSC_EXIT -ne 0 ]; then
+      echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
+      exit $TSC_EXIT
+    fi
+    echo "✅ TypeScript 컴파일 완료"
   else
     echo "❌ tsc를 찾을 수 없습니다. typescript가 설치되었는지 확인하세요."
     exit 1
@@ -90,11 +102,15 @@ echo ""
 echo "Node.js로 서버 실행 시작..."
 echo "=========================================="
 echo "실행 명령: node dist/index.js"
+echo "현재 디렉토리: $(pwd)"
+echo "dist/index.js 절대 경로: $(pwd)/dist/index.js"
+echo "dist/index.js 존재 여부: $([ -f dist/index.js ] && echo 'YES' || echo 'NO')"
 echo "=========================================="
 
 # 포그라운드로 실행 (Cloudtype이 프로세스를 관리)
 # exec 대신 직접 실행하여 에러가 나도 로그가 남도록
-node dist/index.js
+# stderr도 stdout으로 리다이렉트하여 모든 로그가 보이도록
+node dist/index.js 2>&1
 
 # 만약 서버가 종료되면 종료 코드 반환
 EXIT_CODE=$?

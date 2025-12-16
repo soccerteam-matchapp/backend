@@ -19,7 +19,15 @@ import { errorHandler } from './middlewares/error.handler';
 // .env (없어도 조용히 통과)
 dotenv.config();
 
+console.log('===== 애플리케이션 초기화 시작 =====');
+console.log('현재 작업 디렉토리:', process.cwd());
+console.log('__dirname:', __dirname);
+console.log('Node.js 버전:', process.version);
+console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
+
 const app = express();
+console.log('✅ Express 앱 생성 완료');
+
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
     .split(',')
     .map((o) => o.trim());
