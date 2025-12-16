@@ -67,27 +67,32 @@ if (swaggerPath) {
     console.warn('   시도한 경로:', candidateSwaggerPaths);
 }
 
-// 라우터
-app.use('/api/auth', authRoutes);
-app.use('/api/teams', teamRoutes);
-app.use('/api/matches', matchRoutes);
-app.use('/api/auth/phone', phoneRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/attendance-polls', attendancePoll);
-
-// 헬스체크 엔드포인트 (MongoDB 연결 전에도 응답 가능)
+// 헬스체크 엔드포인트는 라우터 등록 전에 먼저 등록 (가장 빠른 응답)
+// Cloudtype 헬스체크가 빠르게 응답받을 수 있도록
 app.get('/health', (_req, res) => {
-    const mongoState = mongoose.connection.readyState;
-    const mongoConnected = mongoState === 1; // 1 = connected
-    
-    res.status(200).json({ 
-        status: 200, 
-        message: 'OK', 
-        data: { 
-            healthy: true,
-            mongodb: mongoConnected ? 'connected' : 'disconnected'
-        } 
-    });
+    try {
+        const mongoState = mongoose.connection.readyState;
+        const mongoConnected = mongoState === 1; // 1 = connected
+        
+        res.status(200).json({ 
+            status: 200, 
+            message: 'OK', 
+            data: { 
+                healthy: true,
+                mongodb: mongoConnected ? 'connected' : 'disconnected'
+            } 
+        });
+    } catch (err) {
+        // 에러가 나도 서버는 살아있다는 신호
+        res.status(200).json({ 
+            status: 200, 
+            message: 'OK', 
+            data: { 
+                healthy: true,
+                mongodb: 'unknown'
+            } 
+        });
+    }
 });
 
 // 루트 경로도 헬스체크로 사용 (Cloudtype이 루트로 헬스체크할 수 있음)
@@ -101,6 +106,14 @@ app.get('/', (_req, res) => {
         } 
     });
 });
+
+// 라우터 (헬스체크 이후 등록)
+app.use('/api/auth', authRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/auth/phone', phoneRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/attendance-polls', attendancePoll);
 
 // 에러 핸들러 (항상 마지막)
 app.use(errorHandler);
@@ -121,30 +134,46 @@ console.log(`  MONGO_URI: ${MONGO_URI ? `설정됨 (길이: ${MONGO_URI.length})
 console.log(`  JWT_SECRET: ${JWT_SECRET ? `설정됨 (길이: ${JWT_SECRET.length})` : '❌ 설정 안됨'}`);
 
 // 서버를 먼저 시작 (환경 변수 체크 전에도 헬스체크 가능)
-app.listen(PORT, HOST, () => {
-    console.log('========================================');
-    console.log(`🚀 Server listening on http://${HOST}:${PORT}`);
-    console.log(`📖 Swagger UI: http://${HOST}:${PORT}/api-docs`);
-    console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
-    console.log('========================================');
-    
-    // 서버 시작 후 환경 변수 체크 (서버는 계속 실행)
-    if (!MONGO_URI) {
-        console.error('');
-        console.error('⚠️  MONGO_URI가 설정되지 않았습니다.');
-        console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
-        console.error('서버는 실행 중이지만 데이터베이스 기능이 작동하지 않습니다.');
-        console.error('');
-    }
-    
-    if (!JWT_SECRET) {
-        console.error('');
-        console.error('⚠️  JWT_SECRET이 설정되지 않았습니다.');
-        console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
-        console.error('서버는 실행 중이지만 인증 기능이 작동하지 않습니다.');
-        console.error('');
-    }
-});
+// 에러 핸들링 추가
+try {
+    const server = app.listen(PORT, HOST, () => {
+        console.log('========================================');
+        console.log(`🚀 Server listening on http://${HOST}:${PORT}`);
+        console.log(`📖 Swagger UI: http://${HOST}:${PORT}/api-docs`);
+        console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
+        console.log('========================================');
+        
+        // 서버 시작 후 환경 변수 체크 (서버는 계속 실행)
+        if (!MONGO_URI) {
+            console.error('');
+            console.error('⚠️  MONGO_URI가 설정되지 않았습니다.');
+            console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
+            console.error('서버는 실행 중이지만 데이터베이스 기능이 작동하지 않습니다.');
+            console.error('');
+        }
+        
+        if (!JWT_SECRET) {
+            console.error('');
+            console.error('⚠️  JWT_SECRET이 설정되지 않았습니다.');
+            console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
+            console.error('서버는 실행 중이지만 인증 기능이 작동하지 않습니다.');
+            console.error('');
+        }
+    });
+
+    // 서버 에러 핸들링
+    server.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`❌ 포트 ${PORT}가 이미 사용 중입니다.`);
+        } else {
+            console.error('❌ 서버 에러:', err);
+        }
+        process.exit(1);
+    });
+} catch (err) {
+    console.error('❌ 서버 시작 실패:', err);
+    process.exit(1);
+}
 
 // MongoDB 연결은 백그라운드에서 처리 (서버 시작을 막지 않음)
 if (MONGO_URI) {
