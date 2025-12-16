@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+# set -e 제거 (서버가 계속 실행되도록)
 
 echo "===== 런타임 컨테이너 시작 ====="
 echo "현재 시간: $(date)"
@@ -93,5 +93,14 @@ echo "실행 명령: node dist/index.js"
 echo "=========================================="
 
 # 포그라운드로 실행 (Cloudtype이 프로세스를 관리)
-exec node dist/index.js
+# exec 대신 직접 실행하여 에러가 나도 로그가 남도록
+node dist/index.js
+
+# 만약 서버가 종료되면 종료 코드 반환
+EXIT_CODE=$?
+echo ""
+echo "=========================================="
+echo "서버 프로세스 종료됨. 종료 코드: $EXIT_CODE"
+echo "=========================================="
+exit $EXIT_CODE
 

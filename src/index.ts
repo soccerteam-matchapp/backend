@@ -90,6 +90,18 @@ app.get('/health', (_req, res) => {
     });
 });
 
+// 루트 경로도 헬스체크로 사용 (Cloudtype이 루트로 헬스체크할 수 있음)
+app.get('/', (_req, res) => {
+    res.status(200).json({ 
+        status: 200, 
+        message: 'OK', 
+        data: { 
+            healthy: true,
+            service: 'Sportly API'
+        } 
+    });
+});
+
 // 에러 핸들러 (항상 마지막)
 app.use(errorHandler);
 
@@ -108,73 +120,81 @@ console.log('환경 변수 확인:');
 console.log(`  MONGO_URI: ${MONGO_URI ? `설정됨 (길이: ${MONGO_URI.length})` : '❌ 설정 안됨'}`);
 console.log(`  JWT_SECRET: ${JWT_SECRET ? `설정됨 (길이: ${JWT_SECRET.length})` : '❌ 설정 안됨'}`);
 
-if (!MONGO_URI) {
-    console.error('');
-    console.error('❌ MONGO_URI가 설정되지 않았습니다.');
-    console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
-    console.error('');
-    process.exit(1);
-}
-
-if (!JWT_SECRET) {
-    console.error('');
-    console.error('❌ JWT_SECRET이 설정되지 않았습니다.');
-    console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
-    console.error('');
-    process.exit(1);
-}
-
-// 서버를 먼저 시작 (MongoDB 연결 전에도 헬스체크 가능)
+// 서버를 먼저 시작 (환경 변수 체크 전에도 헬스체크 가능)
 app.listen(PORT, HOST, () => {
     console.log('========================================');
     console.log(`🚀 Server listening on http://${HOST}:${PORT}`);
     console.log(`📖 Swagger UI: http://${HOST}:${PORT}/api-docs`);
     console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
     console.log('========================================');
+    
+    // 서버 시작 후 환경 변수 체크 (서버는 계속 실행)
+    if (!MONGO_URI) {
+        console.error('');
+        console.error('⚠️  MONGO_URI가 설정되지 않았습니다.');
+        console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
+        console.error('서버는 실행 중이지만 데이터베이스 기능이 작동하지 않습니다.');
+        console.error('');
+    }
+    
+    if (!JWT_SECRET) {
+        console.error('');
+        console.error('⚠️  JWT_SECRET이 설정되지 않았습니다.');
+        console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
+        console.error('서버는 실행 중이지만 인증 기능이 작동하지 않습니다.');
+        console.error('');
+    }
 });
 
 // MongoDB 연결은 백그라운드에서 처리 (서버 시작을 막지 않음)
-console.log('');
-console.log('MongoDB 연결 시도 중...');
-console.log(`연결 URI: ${MONGO_URI.substring(0, 20)}...`);
+if (MONGO_URI) {
+    console.log('');
+    console.log('MongoDB 연결 시도 중...');
+    console.log(`연결 URI: ${MONGO_URI.substring(0, 20)}...`);
+    
+    mongoose
+        .connect(MONGO_URI, {
+            serverSelectionTimeoutMS: 10000, // 10초 타임아웃
+            socketTimeoutMS: 45000,
+        })
+        .then(() => {
+            console.log('✅ MongoDB connected');
+        })
+        .catch((err) => {
+            console.error('');
+            console.error('❌ MongoDB connection error:');
+            console.error(`  메시지: ${err.message}`);
+            console.error(`  이름: ${err.name}`);
+            if (err.stack) {
+                console.error(`  스택:\n${err.stack}`);
+            }
+            console.error('');
+            console.error('⚠️  MongoDB 연결에 실패했습니다. 서버는 계속 실행되지만 데이터베이스 기능이 작동하지 않을 수 있습니다.');
+            console.error('다음을 확인해주세요:');
+            console.error('  1. MONGO_URI가 올바른지 확인');
+            console.error('  2. MongoDB 서버가 실행 중인지 확인');
+            console.error('  3. 네트워크 연결 상태 확인');
+            console.error('');
+            // MongoDB 연결 실패해도 서버는 계속 실행 (헬스체크는 작동)
+        });
+} else {
+    console.log('');
+    console.log('⚠️  MONGO_URI가 설정되지 않아 MongoDB 연결을 건너뜁니다.');
+}
 
-mongoose
-    .connect(MONGO_URI, {
-        serverSelectionTimeoutMS: 10000, // 10초 타임아웃
-        socketTimeoutMS: 45000,
-    })
-    .then(() => {
-        console.log('✅ MongoDB connected');
-    })
-    .catch((err) => {
-        console.error('');
-        console.error('❌ MongoDB connection error:');
-        console.error(`  메시지: ${err.message}`);
-        console.error(`  이름: ${err.name}`);
-        if (err.stack) {
-            console.error(`  스택:\n${err.stack}`);
-        }
-        console.error('');
-        console.error('⚠️  MongoDB 연결에 실패했습니다. 서버는 계속 실행되지만 데이터베이스 기능이 작동하지 않을 수 있습니다.');
-        console.error('다음을 확인해주세요:');
-        console.error('  1. MONGO_URI가 올바른지 확인');
-        console.error('  2. MongoDB 서버가 실행 중인지 확인');
-        console.error('  3. 네트워크 연결 상태 확인');
-        console.error('');
-        // MongoDB 연결 실패해도 서버는 계속 실행 (헬스체크는 작동)
-    });
-
-// 프로세스 종료 이벤트 핸들링
+// 프로세스 종료 이벤트 핸들링 (서버가 계속 실행되도록)
 process.on('uncaughtException', (err) => {
     console.error('❌ Uncaught Exception:', err);
     console.error('스택:', err.stack);
-    process.exit(1);
+    // 서버를 종료하지 않고 계속 실행 (프로덕션에서는 로깅만)
+    // process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise);
     console.error('이유:', reason);
-    process.exit(1);
+    // 서버를 종료하지 않고 계속 실행 (프로덕션에서는 로깅만)
+    // process.exit(1);
 });
 
 export default app;
