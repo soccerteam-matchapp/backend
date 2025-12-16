@@ -19,7 +19,7 @@ options:
     else
       npm i -g pnpm@9
     fi
-    
+
     # pnpm이 제대로 설치되었는지 확인
     pnpm -v || { echo "❌ pnpm 설치 실패"; exit 1; }
     

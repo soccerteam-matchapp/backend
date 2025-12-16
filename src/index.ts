@@ -77,7 +77,17 @@ app.use('/api/attendance-polls', attendancePoll);
 
 // 헬스체크 엔드포인트 (MongoDB 연결 전에도 응답 가능)
 app.get('/health', (_req, res) => {
-    res.status(200).json({ status: 200, message: 'OK', data: { healthy: true } });
+    const mongoState = mongoose.connection.readyState;
+    const mongoConnected = mongoState === 1; // 1 = connected
+    
+    res.status(200).json({ 
+        status: 200, 
+        message: 'OK', 
+        data: { 
+            healthy: true,
+            mongodb: mongoConnected ? 'connected' : 'disconnected'
+        } 
+    });
 });
 
 // 에러 핸들러 (항상 마지막)
@@ -114,11 +124,20 @@ if (!JWT_SECRET) {
     process.exit(1);
 }
 
+// 서버를 먼저 시작 (MongoDB 연결 전에도 헬스체크 가능)
+app.listen(PORT, HOST, () => {
+    console.log('========================================');
+    console.log(`🚀 Server listening on http://${HOST}:${PORT}`);
+    console.log(`📖 Swagger UI: http://${HOST}:${PORT}/api-docs`);
+    console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
+    console.log('========================================');
+});
+
+// MongoDB 연결은 백그라운드에서 처리 (서버 시작을 막지 않음)
 console.log('');
 console.log('MongoDB 연결 시도 중...');
 console.log(`연결 URI: ${MONGO_URI.substring(0, 20)}...`);
 
-// MongoDB 연결 옵션 설정 (타임아웃 등)
 mongoose
     .connect(MONGO_URI, {
         serverSelectionTimeoutMS: 10000, // 10초 타임아웃
@@ -126,15 +145,6 @@ mongoose
     })
     .then(() => {
         console.log('✅ MongoDB connected');
-        console.log('');
-        app.listen(PORT, HOST, () => {
-            console.log('========================================');
-            console.log(`🚀 Server listening on http://${HOST}:${PORT}`);
-            console.log(`✅ 서버가 정상적으로 시작되었습니다.`);
-            console.log(`📖 Swagger UI: http://${HOST}:${PORT}/api-docs`);
-            console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
-            console.log('========================================');
-        });
     })
     .catch((err) => {
         console.error('');
@@ -145,12 +155,13 @@ mongoose
             console.error(`  스택:\n${err.stack}`);
         }
         console.error('');
-        console.error('MongoDB 연결에 실패했습니다. 다음을 확인해주세요:');
+        console.error('⚠️  MongoDB 연결에 실패했습니다. 서버는 계속 실행되지만 데이터베이스 기능이 작동하지 않을 수 있습니다.');
+        console.error('다음을 확인해주세요:');
         console.error('  1. MONGO_URI가 올바른지 확인');
         console.error('  2. MongoDB 서버가 실행 중인지 확인');
         console.error('  3. 네트워크 연결 상태 확인');
         console.error('');
-        process.exit(1);
+        // MongoDB 연결 실패해도 서버는 계속 실행 (헬스체크는 작동)
     });
 
 // 프로세스 종료 이벤트 핸들링
