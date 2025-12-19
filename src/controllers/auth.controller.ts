@@ -11,12 +11,22 @@ import {
 import { ValidationError } from '../utils/errors';
 import { normalizePhoneNumber } from '../utils/phone';
 
-/** 회원가입 */
+/** 회원가입 (전화번호 인증 + 회원가입 한 번에 처리) */
 export const register = async (req: Request, res: Response) => {
-    const { id, name, password, phoneNumber } = req.body;
-    const normalizedPhone = normalizePhoneNumber(phoneNumber); // 정규화
-    await assertPhoneVerified(normalizedPhone);  // 먼저 전화번호 인증 확인
-    await registerUser(id, name, password);  // 그 다음 유저 저장
+    const { id, name, password, phoneNumber, verificationCode } = req.body;
+    
+    // 전화번호 정규화
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+    
+    // 인증번호 검증
+    await verifyPhoneCode(normalizedPhone, verificationCode);
+    
+    // 유저 저장
+    await registerUser(id, name, password);
+    
+    // 인증 데이터 삭제 (회원가입 완료 후)
+    await PhoneVerificationModel.deleteOne({ phone: normalizedPhone });
+    
     return res.status(201).json({ status: 201, message: '회원가입 성공', data: null });
 };
 
@@ -38,17 +48,43 @@ export const refresh = async (req: Request, res: Response) => {
     return res.status(200).json({ status: 200, message: '토큰 재발급 성공', data: tokens });
 };
 
-/** 전화번호 인증 확인 */
-async function assertPhoneVerified(phoneNumber?: string) {
+/** 전화번호 인증번호 검증 */
+async function verifyPhoneCode(phoneNumber: string, code: string) {
     if (!phoneNumber) {
         throw new ValidationError('전화번호가 필요합니다.');
     }
-
-    // 모델명: PhoneVerificationModel
-    // 필드명: phone (모델 스키마에 맞춤)
-    const pv = await PhoneVerificationModel.findOne({ phone: phoneNumber });
-    if (!pv || !pv.verified) {
-        throw new ValidationError('전화번호 미인증');
+    if (!code) {
+        throw new ValidationError('인증번호가 필요합니다.');
     }
-    // 필요하면: await PhoneVerificationModel.deleteOne({ _id: pv._id });
+
+    const pv = await PhoneVerificationModel.findOne({ phone: phoneNumber });
+    
+    if (!pv) {
+        throw new ValidationError('인증번호를 먼저 요청해주세요.');
+    }
+    
+    // 만료 확인
+    if (pv.expiresAt.getTime() < Date.now()) {
+        throw new ValidationError('인증번호가 만료되었습니다. 다시 요청해주세요.');
+    }
+    
+    // 시도 횟수 확인
+    if ((pv.attempts ?? 0) >= 5) {
+        throw new ValidationError('시도 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.');
+    }
+    
+    // 코드 일치 확인
+    if (pv.code !== code) {
+        await PhoneVerificationModel.updateOne(
+            { _id: pv._id }, 
+            { $inc: { attempts: 1 } }
+        );
+        throw new ValidationError('인증번호가 올바르지 않습니다.');
+    }
+    
+    // 인증 성공 - verified 상태로 변경
+    await PhoneVerificationModel.updateOne(
+        { _id: pv._id },
+        { $set: { verified: true } }
+    );
 }

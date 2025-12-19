@@ -28,11 +28,19 @@ export async function requestCode(req: Request, res: Response, next: NextFunctio
         const code = generateCode();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5분
 
-        await PhoneVerificationModel.findOneAndUpdate(
-            { phone },
-            { $set: { code, verified: false, attempts: 0, expiresAt } },
-            { upsert: true, new: true }
-        );
+        // 기존 인증 데이터 삭제 (정규화 전/후 둘 다)
+        await PhoneVerificationModel.deleteMany({ 
+            $or: [{ phone }, { phone: rawPhone }] 
+        });
+        
+        // 새로 생성
+        await PhoneVerificationModel.create({
+            phone,
+            code,
+            verified: false,
+            attempts: 0,
+            expiresAt
+        });
 
         // 문자 전송은 선택(환경변수 없으면 콘솔만)
         try {

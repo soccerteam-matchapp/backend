@@ -4,7 +4,18 @@ import { Request, Response, NextFunction } from 'express';
 export const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunction) => {
     // MongoDB duplicate key => 409
     if (err?.code === 11000) {
-        err = Object.assign(new Error('이미 존재하는 아이디입니다.'), { statusCode: 409, error: 'duplicate_key' });
+        // 어떤 필드가 중복인지 파악
+        const keyValue = err?.keyValue;
+        const duplicateField = keyValue ? Object.keys(keyValue)[0] : 'unknown';
+        const duplicateValue = keyValue ? Object.values(keyValue)[0] : '';
+        
+        console.error(`[Duplicate Key] field: ${duplicateField}, value: ${duplicateValue}`);
+        
+        const message = duplicateField === 'id' 
+            ? '이미 존재하는 아이디입니다.'
+            : `이미 사용 중인 ${duplicateField}입니다.`;
+        
+        err = Object.assign(new Error(message), { statusCode: 409, error: 'duplicate_key' });
     }
 
     if (err?.message === 'Invalid credentials') {
