@@ -137,12 +137,17 @@ components:
           type: string
           minLength: 8
           example: secret12
+        phoneNumber:
+          type: string
+          description: '인증 완료된 전화번호'
+          example: '+821012345678'
         username:
           type: string
           description: 'username를 보내면 내부적으로 name으로 매핑 처리'
       required:
         - id
         - password
+        - phoneNumber
     LoginRequest:
       type: object
       properties:
@@ -569,11 +574,13 @@ paths:
                   id: soccer123
                   name: 정혜원
                   password: secret12
+                  phoneNumber: '+821012345678'
               allowUsernameAlias:
                 value:
                   id: soccer123
                   username: 정혜원
                   password: secret12
+                  phoneNumber: '+821012345678'
       responses:
         '201':
           description: Created
