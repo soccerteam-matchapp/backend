@@ -16,8 +16,15 @@ import phoneRoutes from './routes/phone.routes';
 import notificationRoutes from './routes/notification.routes';
 import { errorHandler } from './middlewares/error.handler';
 
-// .env (없어도 조용히 통과)
-dotenv.config();
+// .env 로딩 (프로젝트 루트에서 찾음)
+const envPath = path.resolve(process.cwd(), '.env');
+const envResult = dotenv.config({ path: envPath });
+if (envResult.error) {
+    console.warn('⚠️  .env 파일을 찾지 못했습니다:', envPath);
+    console.warn('   환경변수가 시스템에 직접 설정되어 있는지 확인하세요.');
+} else {
+    console.log('✅ .env 파일 로드 완료:', envPath);
+}
 
 console.log('===== 애플리케이션 초기화 시작 =====');
 console.log('현재 작업 디렉토리:', process.cwd());

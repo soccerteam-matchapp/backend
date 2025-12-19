@@ -2,7 +2,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
-import PhoneVerificationModel from '../models/phoneVerification.model'; // ✅ 핵심
+import PhoneVerificationModel from '../models/phoneVerification.model';
+import { normalizePhoneNumber } from '../utils/phone';
 
 // 6자리 코드 생성
 function generateCode(): string {
@@ -22,7 +23,8 @@ const verifySchema = z.object({
 // 코드 요청
 export async function requestCode(req: Request, res: Response, next: NextFunction) {
     try {
-        const { phone } = requestSchema.parse(req.body);
+        const { phone: rawPhone } = requestSchema.parse(req.body);
+        const phone = normalizePhoneNumber(rawPhone); // 정규화
         const code = generateCode();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5분
 
@@ -61,7 +63,8 @@ export async function requestCode(req: Request, res: Response, next: NextFunctio
 // 코드 검증
 export async function verifyCode(req: Request, res: Response, next: NextFunction) {
     try {
-        const { phone, code } = verifySchema.parse(req.body);
+        const { phone: rawPhone, code } = verifySchema.parse(req.body);
+        const phone = normalizePhoneNumber(rawPhone); // 정규화
 
         const doc = await PhoneVerificationModel.findOne({ phone });
         if (!doc) return res.status(400).json({ success: false, message: '코드가 없습니다.' });
