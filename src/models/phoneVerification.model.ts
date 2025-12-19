@@ -26,4 +26,9 @@ const schema = new Schema<IPhoneVerification>(
 const PhoneVerificationModel: Model<IPhoneVerification> =
     model<IPhoneVerification>('PhoneVerification', schema);
 
+// 기존 unique 인덱스 삭제 (한 번만 실행됨)
+PhoneVerificationModel.collection.dropIndex('phone_1').catch(() => {
+    // 인덱스가 없으면 무시
+});
+
 export default PhoneVerificationModel;

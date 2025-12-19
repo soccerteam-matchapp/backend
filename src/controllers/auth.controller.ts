@@ -13,13 +13,17 @@ import { normalizePhoneNumber } from '../utils/phone';
 
 /** 회원가입 (전화번호 인증 + 회원가입 한 번에 처리) */
 export const register = async (req: Request, res: Response) => {
-    const { id, name, password, phoneNumber, verificationCode } = req.body;
+    const { id, name, password, phoneNumber, verificationCode, phone, code } = req.body;
     
-    // 전화번호 정규화
-    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+    // 전화번호 정규화 (phoneNumber 또는 phone 둘 다 허용)
+    const rawPhone = phoneNumber || phone;
+    const normalizedPhone = normalizePhoneNumber(rawPhone);
+    
+    // 인증번호 (verificationCode 또는 code 둘 다 허용)
+    const verifyCode = verificationCode || code;
     
     // 인증번호 검증
-    await verifyPhoneCode(normalizedPhone, verificationCode);
+    await verifyPhoneCode(normalizedPhone, verifyCode);
     
     // 유저 저장
     await registerUser(id, name, password);
