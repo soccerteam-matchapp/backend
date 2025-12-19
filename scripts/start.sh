@@ -1,0 +1,193 @@
+#!/bin/bash
+# set -e 제거 (서버가 계속 실행되도록)
+
+echo "===== 런타임 컨테이너 시작 ====="
+echo "현재 시간: $(date)"
+echo "현재 디렉토리: $(pwd)"
+echo "Node.js 버전: $(node --version)"
+echo "파일 목록:"
+ls -la || true
+
+# dist/index.js가 없으면 빌드 수행
+if [ ! -f "dist/index.js" ]; then
+  echo "⚠️ dist/index.js 없음. 빌드 시작..."
+  
+  # pnpm 확인 및 사용 (권한 문제 방지를 위해 npx 사용)
+  if command -v pnpm >/dev/null 2>&1; then
+    PNPM_CMD="pnpm"
+    echo "✅ pnpm 발견: $(which pnpm)"
+  else
+    PNPM_CMD="npx -y pnpm@9"
+    echo "⚠️ pnpm 없음. npx를 통해 사용"
+  fi
+  
+  # 의존성 설치 (devDependencies 포함)
+  if [ ! -d "node_modules" ]; then
+    echo "---- node_modules 없음. 의존성 설치 (devDependencies 포함) ----"
+    # NODE_ENV를 임시로 변경하여 devDependencies도 설치
+    NODE_ENV=development $PNPM_CMD install --no-frozen-lockfile || exit 1
+  fi
+  
+  # Swagger 병합
+  echo "---- Swagger 병합 ----"
+  $PNPM_CMD run merge-swagger || exit 1
+  
+  # TypeScript 컴파일 (로컬에 설치된 tsc 사용, 메모리 제한 증가)
+  echo "---- TypeScript 컴파일 (메모리 제한: 4GB) ----"
+  export NODE_OPTIONS="--max-old-space-size=4096"
+  
+  # tsc 실행 전 dist 폴더 확인
+  echo "컴파일 전 dist 폴더 상태:"
+  ls -la dist/ 2>/dev/null || echo "dist 폴더 없음 (정상)"
+  
+  if [ -f "node_modules/.bin/tsc" ]; then
+    echo "tsc 경로: $(pwd)/node_modules/.bin/tsc"
+    echo "tsc 버전 확인:"
+    ./node_modules/.bin/tsc --version || echo "버전 확인 실패"
+    echo ""
+    echo "tsc 실행 시작..."
+    echo "시작 시간: $(date)"
+    
+    # tsc 실행 (모든 출력 즉시 표시)
+    ./node_modules/.bin/tsc 2>&1
+    TSC_EXIT=$?
+    
+    echo ""
+    echo "종료 시간: $(date)"
+    echo "TypeScript 컴파일 종료 코드: $TSC_EXIT"
+    
+    if [ $TSC_EXIT -ne 0 ]; then
+      echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
+      echo "dist 폴더 상태:"
+      ls -la dist/ 2>/dev/null || echo "dist 폴더 없음"
+      exit $TSC_EXIT
+    fi
+    
+    echo "✅ TypeScript 컴파일 완료"
+  elif command -v tsc >/dev/null 2>&1; then
+    echo "tsc 경로: $(which tsc)"
+    echo "tsc 버전 확인:"
+    tsc --version || echo "버전 확인 실패"
+    echo ""
+    echo "tsc 실행 시작..."
+    echo "시작 시간: $(date)"
+    
+    # tsc 실행 (모든 출력 즉시 표시)
+    tsc 2>&1
+    TSC_EXIT=$?
+    
+    echo ""
+    echo "종료 시간: $(date)"
+    echo "TypeScript 컴파일 종료 코드: $TSC_EXIT"
+    
+    if [ $TSC_EXIT -ne 0 ]; then
+      echo "❌ TypeScript 컴파일 실패. 종료 코드: $TSC_EXIT"
+      echo "dist 폴더 상태:"
+      ls -la dist/ 2>/dev/null || echo "dist 폴더 없음"
+      exit $TSC_EXIT
+    fi
+    
+    echo "✅ TypeScript 컴파일 완료"
+  else
+    echo "❌ tsc를 찾을 수 없습니다. typescript가 설치되었는지 확인하세요."
+    exit 1
+  fi
+  
+  # dist/index.js 생성 확인
+  echo ""
+  echo "---- dist/index.js 생성 확인 ----"
+  sleep 1  # 파일 시스템 동기화 대기
+  if [ -f "dist/index.js" ]; then
+    echo "✅ dist/index.js 생성됨"
+    ls -lh dist/index.js
+    echo "파일 크기: $(wc -c < dist/index.js) bytes"
+    echo "파일 첫 부분 (20줄):"
+    head -20 dist/index.js
+  else
+    echo "❌ dist/index.js가 생성되지 않았습니다!"
+    echo "dist 폴더 전체 내용:"
+    ls -la dist/ 2>/dev/null || echo "dist 폴더 없음"
+    echo "dist 폴더의 모든 파일:"
+    find dist -type f 2>/dev/null || echo "파일 없음"
+    exit 1
+  fi
+  
+  # Swagger 파일 복사 (로컬에 설치된 cpx 사용)
+  echo "---- Swagger 파일 복사 ----"
+  if [ -f "node_modules/.bin/cpx" ]; then
+    ./node_modules/.bin/cpx src/swagger.yaml dist || exit 1
+  elif command -v cpx >/dev/null 2>&1; then
+    cpx src/swagger.yaml dist || exit 1
+  else
+    echo "❌ cpx를 찾을 수 없습니다. cpx가 설치되었는지 확인하세요."
+    exit 1
+  fi
+  
+  echo "✅ 빌드 완료"
+  echo "dist/index.js 확인:"
+  ls -lh dist/index.js || echo "❌ dist/index.js 여전히 없음!"
+else
+  echo "✅ dist/index.js 존재. 서버 시작..."
+fi
+
+# 서버 시작
+echo "===== 서버 시작 ====="
+echo "환경 변수 확인:"
+echo "  NODE_ENV: ${NODE_ENV:-not set}"
+echo "  PORT: ${PORT:-not set}"
+if [ -z "$MONGO_URI" ]; then
+    echo "  ❌ MONGO_URI: 설정 안됨 (필수)"
+else
+    echo "  ✅ MONGO_URI: 설정됨 (길이: ${#MONGO_URI})"
+fi
+if [ -z "$JWT_SECRET" ]; then
+    echo "  ❌ JWT_SECRET: 설정 안됨 (필수)"
+else
+    echo "  ✅ JWT_SECRET: 설정됨 (길이: ${#JWT_SECRET})"
+fi
+
+echo ""
+echo "dist/index.js 파일 확인:"
+if [ ! -f "dist/index.js" ]; then
+    echo "❌ dist/index.js 파일이 없습니다!"
+    exit 1
+fi
+ls -lh dist/index.js
+
+echo ""
+echo "===== 서버 실행 준비 ====="
+echo "현재 디렉토리: $(pwd)"
+echo "Node.js 버전: $(node --version)"
+echo "dist/index.js 절대 경로: $(pwd)/dist/index.js"
+echo "dist/index.js 존재 여부: $([ -f dist/index.js ] && echo '✅ YES' || echo '❌ NO')"
+if [ ! -f "dist/index.js" ]; then
+    echo "❌ dist/index.js 파일이 없습니다. 빌드를 다시 시도합니다."
+    exit 1
+fi
+echo "dist/index.js 파일 크기: $(wc -c < dist/index.js) bytes"
+echo ""
+echo "환경 변수:"
+echo "  PORT: ${PORT:-3000 (기본값)}"
+echo "  NODE_ENV: ${NODE_ENV:-not set}"
+echo "  MONGO_URI: ${MONGO_URI:+설정됨 (길이: ${#MONGO_URI})}${MONGO_URI:-❌ 설정 안됨}"
+echo "  JWT_SECRET: ${JWT_SECRET:+설정됨 (길이: ${#JWT_SECRET})}${JWT_SECRET:-❌ 설정 안됨}"
+echo ""
+echo "=========================================="
+echo "Node.js로 서버 실행 시작..."
+echo "실행 명령: node dist/index.js"
+echo "=========================================="
+echo ""
+
+# 포그라운드로 실행 (Cloudtype이 프로세스를 관리)
+# stderr도 stdout으로 리다이렉트하여 모든 로그가 보이도록
+# NODE_ENV를 명시적으로 설정하여 버퍼링 방지
+NODE_ENV=${NODE_ENV:-production} node dist/index.js 2>&1
+
+# 만약 서버가 종료되면 종료 코드 반환
+EXIT_CODE=$?
+echo ""
+echo "=========================================="
+echo "서버 프로세스 종료됨. 종료 코드: $EXIT_CODE"
+echo "=========================================="
+exit $EXIT_CODE
+

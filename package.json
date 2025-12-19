@@ -1,37 +1,52 @@
 {
+	"name": "soccer-matching-backend",
+	"version": "1.0.0",
+	"main": "dist/index.js",
+	"scripts": {
+		"dev": "nodemon",
+		"merge-swagger": "node scripts/merge-swagger.js",
+		"prebuild": "pnpm run merge-swagger",
+		"build": "tsc",
+		"postbuild": "cpx src/swagger.yaml dist",
+		"start": "node dist/index.js"
+	},
+	"dependencies": {
+		"bcrypt": "npm:bcryptjs@^3.0.2",
+		"bcryptjs": "^3.0.2",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.14.2",
+		"cors": "^2.8.5",
+		"dotenv": "^17.2.0",
+		"express": "^5.1.0",
+		"jsonwebtoken": "^9.0.2",
+		"mongoose": "^8.16.4",
+		"reflect-metadata": "^0.2.2",
+		"solapi": "^5.5.2",
+		"swagger-ui-express": "^5.0.1",
+		"yamljs": "^0.3.0",
+		"zod": "^4.1.7"
+	},
 	"devDependencies": {
 		"@eslint/js": "^9.31.0",
-		"@types/bcrypt": "^6.0.0",
+		"@types/bcryptjs": "^3.0.0",
+		"@types/cors": "^2.8.19",
 		"@types/express": "^5.0.3",
 		"@types/jsonwebtoken": "^9.0.10",
 		"@types/node": "^24.1.0",
 		"@types/swagger-ui-express": "^4.1.8",
 		"@types/yamljs": "^0.2.34",
+		"cpx": "^1.5.0",
 		"eslint": "^9.31.0",
 		"globals": "^16.3.0",
 		"nodemon": "^3.1.10",
 		"swagger-jsdoc": "^6.2.8",
-		"swagger-ui-express": "^5.0.1",
 		"ts-node": "^10.9.2",
 		"ts-node-dev": "^2.0.0",
-		"typescript": "^5.9.2",
+		"typescript": "^5.8.3",
 		"typescript-eslint": "^8.38.0"
 	},
-	"dependencies": {
-		"bcrypt": "^6.0.0",
-		"dotenv": "^17.2.0",
-		"express": "^5.1.0",
-		"jsonwebtoken": "^9.0.2",
-		"mongoose": "^8.16.4",
-		"swagger-cli": "^4.0.4",
-		"yamljs": "^0.3.0"
-	},
-	"main": "src/index.ts",
-	"scripts": {
-		"api-docs": "swagger-cli bundle ./src/swagger/openapi.yaml --outfile src/swagger.yaml --type yaml",
-		"predev": "pnpm run api-docs",
-		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-		"build": "tsc",
-		"start": "tsc && node dist/index.js"
+	"packageManager": "pnpm@9.15.9",
+	"engines": {
+		"node": "20.x"
 	}
 }

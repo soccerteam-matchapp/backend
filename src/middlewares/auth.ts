@@ -10,6 +10,15 @@ function getJwtSecret(): string {
     return s;
 }
 
+/** JWT Payload 타입 정의 */
+export interface JwtPayload {
+    sub?: string;  // 사용자 _id (MongoDB ObjectId 문자열)
+    id?: string;   // 구형 토큰 호환용 (username)
+    role?: 'leader' | 'member';  // 사용자 역할
+    iat?: number;  // issued at
+    exp?: number;  // expiration
+}
+
 export interface AuthenticatedRequest extends Request {
     userId?: string;
     role?: 'leader' | 'member';
@@ -29,7 +38,7 @@ export const requireAuth = async (req: AuthenticatedRequest, _res: Response, nex
     const token = auth.slice(7);
 
     try {
-        const payload = jwt.verify(token, getJwtSecret()) as { sub?: string; id?: string; role?: 'leader' | 'member' };
+        const payload = jwt.verify(token, getJwtSecret()) as JwtPayload;
         let userId = payload.sub;
 
         // 구형 토큰(id = username)도 지원
@@ -70,5 +79,19 @@ export const validateRegister = (req: Request, _res: Response, next: NextFunctio
     if (typeof password !== 'string' || password.length < 6) {
         return next(new ValidationError('password는 6자 이상이어야 합니다.'));
     }
+    return next();
+};
+
+/** 리더 권한 검증 미들웨어 (JWT의 role이 'leader'인지 확인) */
+export const requireLeader = async (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
+    // requireAuth가 먼저 실행되어야 함
+    if (!req.userId) {
+        return next(Object.assign(new Error('authentication required'), { statusCode: 401, error: 'authentication_required' }));
+    }
+
+    if (req.role !== 'leader') {
+        return next(Object.assign(new Error('leader access required'), { statusCode: 403, error: 'forbidden' }));
+    }
+
     return next();
 };
