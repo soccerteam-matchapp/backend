@@ -28,7 +28,7 @@ console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
 const app = express();
 console.log('✅ Express 앱 생성 완료');
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000,http://localhost:5174')
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
     .split(',')
     .map((o) => o.trim());
 
@@ -81,37 +81,37 @@ app.get('/health', (_req, res) => {
     try {
         const mongoState = mongoose.connection.readyState;
         const mongoConnected = mongoState === 1; // 1 = connected
-        
-        res.status(200).json({ 
-            status: 200, 
-            message: 'OK', 
-            data: { 
+
+        res.status(200).json({
+            status: 200,
+            message: 'OK',
+            data: {
                 healthy: true,
                 mongodb: mongoConnected ? 'connected' : 'disconnected'
-            } 
+            }
         });
     } catch (err) {
         // 에러가 나도 서버는 살아있다는 신호
-        res.status(200).json({ 
-            status: 200, 
-            message: 'OK', 
-            data: { 
+        res.status(200).json({
+            status: 200,
+            message: 'OK',
+            data: {
                 healthy: true,
                 mongodb: 'unknown'
-            } 
+            }
         });
     }
 });
 
 // 루트 경로도 헬스체크로 사용 (Cloudtype이 루트로 헬스체크할 수 있음)
 app.get('/', (_req, res) => {
-    res.status(200).json({ 
-        status: 200, 
-        message: 'OK', 
-        data: { 
+    res.status(200).json({
+        status: 200,
+        message: 'OK',
+        data: {
             healthy: true,
             service: 'Sportly API'
-        } 
+        }
     });
 });
 
@@ -156,14 +156,14 @@ try {
         console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
         console.log('========================================');
         console.log('');
-        
+
         // 서버 시작 후 환경 변수 체크 (서버는 계속 실행)
         if (!MONGO_URI) {
             console.error('⚠️  MONGO_URI가 설정되지 않았습니다.');
             console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
             console.error('서버는 실행 중이지만 데이터베이스 기능이 작동하지 않습니다.');
         }
-        
+
         if (!JWT_SECRET) {
             console.error('⚠️  JWT_SECRET이 설정되지 않았습니다.');
             console.error('Cloudtype 대시보드에서 환경 변수를 설정해주세요.');
@@ -184,7 +184,7 @@ try {
         }
         process.exit(1);
     });
-    
+
     console.log('✅ 서버 listen 호출 완료 (콜백 대기 중...)');
 } catch (err: any) {
     console.error('');
@@ -202,7 +202,7 @@ if (MONGO_URI) {
     console.log('');
     console.log('MongoDB 연결 시도 중...');
     console.log(`연결 URI: ${MONGO_URI.substring(0, 20)}...`);
-    
+
     mongoose
         .connect(MONGO_URI, {
             serverSelectionTimeoutMS: 10000, // 10초 타임아웃
