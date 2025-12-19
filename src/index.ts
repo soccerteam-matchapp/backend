@@ -28,7 +28,7 @@ console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
 const app = express();
 console.log('✅ Express 앱 생성 완료');
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000,http://localhost:5174')
     .split(',')
     .map((o) => o.trim());
 
