@@ -42,24 +42,38 @@ export async function requestCode(req: Request, res: Response, next: NextFunctio
             expiresAt
         });
 
-        // 문자 전송은 선택(환경변수 없으면 콘솔만)
-        try {
-            const apiKey = process.env.SOLAPI_API_KEY;
-            const apiSecret = process.env.SOLAPI_API_SECRET;
-            const sender = process.env.SMS_SENDER;
-            if (apiKey && apiSecret && sender) {
+        // 문자 전송
+        const apiKey = process.env.SOLAPI_API_KEY;
+        const apiSecret = process.env.SOLAPI_API_SECRET;
+        const sender = process.env.SMS_SENDER;
+        
+        if (apiKey && apiSecret && sender) {
+            try {
                 const { SolapiMessageService } = await import('solapi');
                 const messageService = new SolapiMessageService(apiKey, apiSecret);
-                await messageService.sendOne({
-                    to: phone,
+                
+                // SOLAPI용 전화번호 형식 변환 (+821012345678 → 01012345678)
+                const smsPhone = phone.startsWith('+82') 
+                    ? '0' + phone.slice(3)  // +821012345678 → 01012345678
+                    : phone;
+                
+                console.log(`[SMS] 발송 시도: to=${smsPhone}, from=${sender}`);
+                
+                const result = await messageService.sendOne({
+                    to: smsPhone,
                     from: sender,
                     text: `[인증번호] ${code} (5분 내 유효)`,
                 });
-            } else {
-                console.log(`[DEV] phone=${phone}, code=${code} (SOLAPI env 미설정)`);
+                
+                console.log(`[SMS] 발송 성공:`, JSON.stringify(result));
+            } catch (e: any) {
+                console.error('[SMS] 발송 실패:', e?.message || e);
+                console.error('[SMS] 상세:', JSON.stringify(e?.response?.data || e));
+                // SMS 실패해도 인증번호는 DB에 저장되어 있으니 계속 진행
             }
-        } catch (e) {
-            console.warn('문자 전송 실패(무시):', (e as Error).message);
+        } else {
+            console.log(`[DEV] phone=${phone}, code=${code}`);
+            console.log(`[DEV] 환경변수 상태: API_KEY=${!!apiKey}, API_SECRET=${!!apiSecret}, SENDER=${!!sender}`);
         }
 
         res.json({ success: true });
