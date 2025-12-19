@@ -28,15 +28,11 @@ console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
 const app = express();
 console.log('✅ Express 앱 생성 완료');
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
-    .split(',')
-    .map((o) => o.trim());
-
 app.use(
-    cors({
-        origin: allowedOrigins,
-        credentials: true, // 쿠키/Authorization 헤더 쓰면 true
-    }),
+  cors({
+    origin: true, // 요청 origin 그대로 허용
+    credentials: true,
+  })
 );
 app.use(express.json());
 
@@ -249,3 +245,4 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 export default app;
+
