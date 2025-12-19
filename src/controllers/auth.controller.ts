@@ -12,9 +12,9 @@ import { ValidationError } from '../utils/errors';
 
 /** 회원가입 */
 export const register = async (req: Request, res: Response) => {
-    const { id, name, password } = req.body;
-    await registerUser(id, name, password);
-    await assertPhoneVerified(req.body.phoneNumber);
+    const { id, name, password, phoneNumber } = req.body;
+    await assertPhoneVerified(phoneNumber);  // 먼저 전화번호 인증 확인
+    await registerUser(id, name, password);  // 그 다음 유저 저장
     return res.status(201).json({ status: 201, message: '회원가입 성공', data: null });
 };
 
